@@ -1,0 +1,587 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Business Dashboard - SalonPro</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="/styles/main.css" rel="stylesheet">
+    <link href="/styles/business.css" rel="stylesheet">
+</head>
+<body>
+    <div class="dashboard-container">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <div class="business-logo">
+                    <i class="fas fa-store"></i>
+                    <span id="businessNameDisplay">Business Name</span>
+                </div>
+            </div>
+            
+            <nav class="sidebar-nav">
+                <a href="#dashboard" class="nav-item active" data-section="dashboard">
+                    <i class="fas fa-chart-bar"></i>
+                    <span>Dashboard</span>
+                </a>
+                <a href="#appointments" class="nav-item" data-section="appointments">
+                    <i class="fas fa-calendar-check"></i>
+                    <span>Appointments</span>
+                </a>
+                <a href="#stylists" class="nav-item" data-section="stylists">
+                    <i class="fas fa-user-tie"></i>
+                    <span>Stylists</span>
+                </a>
+                <a href="#services" class="nav-item" data-section="services">
+                    <i class="fas fa-scissors"></i>
+                    <span>Services</span>
+                </a>
+                <a href="#hours" class="nav-item" data-section="hours">
+                    <i class="fas fa-clock"></i>
+                    <span>Business Hours</span>
+                </a>
+                <a href="#qrcode" class="nav-item" data-section="qrcode">
+                    <i class="fas fa-qrcode"></i>
+                    <span>QR Code</span>
+                </a>
+            </nav>
+            
+            <div class="sidebar-footer">
+                <button class="nav-item logout-btn" onclick="authManager.logout()">
+                    <i class="fas fa-sign-out-alt"></i>
+                    <span>Logout</span>
+                </button>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <header class="content-header">
+                <div class="header-left">
+                    <button class="sidebar-toggle" id="sidebarToggle">
+                        <i class="fas fa-bars"></i>
+                    </button>
+                    <h1 id="contentTitle">Dashboard Overview</h1>
+                </div>
+                <div class="header-actions">
+                    <div class="user-menu">
+                        <span id="userName">Business Owner</span>
+                        <div class="user-avatar">
+                            <i class="fas fa-user"></i>
+                        </div>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Dashboard Sections -->
+            <div class="content-sections">
+                <!-- Dashboard Overview -->
+                <section id="dashboard" class="content-section active">
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-icon">
+                                <i class="fas fa-calendar-day"></i>
+                            </div>
+                            <div class="stat-info">
+                                <h3 id="todayAppointments">0</h3>
+                                <p>Today's Appointments</p>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon">
+                                <i class="fas fa-clock"></i>
+                            </div>
+                            <div class="stat-info">
+                                <h3 id="pendingAppointments">0</h3>
+                                <p>Pending Confirmation</p>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon">
+                                <i class="fas fa-check-circle"></i>
+                            </div>
+                            <div class="stat-info">
+                                <h3 id="completedAppointments">0</h3>
+                                <p>Completed This Week</p>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon">
+                                <i class="fas fa-money-bill-wave"></i>
+                            </div>
+                            <div class="stat-info">
+                                <h3 id="totalRevenue">$0</h3>
+                                <p>Total Revenue</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="dashboard-content">
+                        <div class="content-row">
+                            <div class="content-col">
+                                <div class="card">
+                                    <div class="card-header">
+                                        <h3>Recent Appointments</h3>
+                                        <button class="btn btn-sm btn-primary" onclick="showSection('appointments')">
+                                            View All
+                                        </button>
+                                    </div>
+                                    <div class="card-body">
+                                        <div id="recentAppointmentsList" class="appointments-list">
+                                            <div class="text-center text-muted py-4">
+                                                <i class="fas fa-calendar-times fa-2x mb-2"></i>
+                                                <p>No recent appointments</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="content-col">
+                                <div class="card">
+                                    <div class="card-header">
+                                        <h3>Quick Actions</h3>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="quick-actions">
+                                            <button class="quick-action-btn" onclick="showSection('appointments')">
+                                                <i class="fas fa-calendar-plus"></i>
+                                                <span>Manage Appointments</span>
+                                            </button>
+                                            <button class="quick-action-btn" onclick="openAddStylistModal()">
+                                                <i class="fas fa-user-plus"></i>
+                                                <span>Add Stylist</span>
+                                            </button>
+                                            <button class="quick-action-btn" onclick="openAddServiceModal()">
+                                                <i class="fas fa-plus-circle"></i>
+                                                <span>Add Service</span>
+                                            </button>
+                                            <button class="quick-action-btn" onclick="showSection('qrcode')">
+                                                <i class="fas fa-download"></i>
+                                                <span>Download QR Code</span>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Appointments Section -->
+                <section id="appointments" class="content-section">
+                    <div class="section-header">
+                        <h2>Appointment Management</h2>
+                        <div class="section-actions">
+                            <div class="filter-group">
+                                <select id="appointmentStatus" class="form-select">
+                                    <option value="all">All Appointments</option>
+                                    <option value="pending">Pending</option>
+                                    <option value="confirmed">Confirmed</option>
+                                    <option value="completed">Completed</option>
+                                    <option value="cancelled">Cancelled</option>
+                                </select>
+                                <input type="date" id="appointmentDate" class="form-control">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="table table-hover" id="appointmentsTable">
+                                    <thead class="table-dark">
+                                        <tr>
+                                            <th>Date</th>
+                                            <th>Time</th>
+                                            <th>Customer</th>
+                                            <th>Phone</th>
+                                            <th>Service</th>
+                                            <th>Stylist</th>
+                                            <th>Status</th>
+                                            <th>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="appointmentsTableBody">
+                                        <tr>
+                                            <td colspan="8" class="text-center text-muted py-4">
+                                                <i class="fas fa-calendar-times fa-2x mb-2"></i>
+                                                <p>No appointments found</p>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Stylists Section -->
+                <section id="stylists" class="content-section">
+                    <div class="section-header">
+                        <h2>Stylist Management</h2>
+                        <button class="btn btn-primary" onclick="openAddStylistModal()">
+                            <i class="fas fa-plus"></i> Add Stylist
+                        </button>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="table table-hover" id="stylistsTable">
+                                    <thead class="table-dark">
+                                        <tr>
+                                            <th>Name</th>
+                                            <th>Email</th>
+                                            <th>Experience</th>
+                                            <th>Specialties</th>
+                                            <th>Status</th>
+                                            <th>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="stylistsTableBody">
+                                        <tr>
+                                            <td colspan="6" class="text-center text-muted py-4">
+                                                <i class="fas fa-user-tie fa-2x mb-2"></i>
+                                                <p>No stylists added yet</p>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Services Section -->
+                <section id="services" class="content-section">
+                    <div class="section-header">
+                        <h2>Service Management</h2>
+                        <button class="btn btn-primary" onclick="openAddServiceModal()">
+                            <i class="fas fa-plus"></i> Add Service
+                        </button>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="table table-hover" id="servicesTable">
+                                    <thead class="table-dark">
+                                        <tr>
+                                            <th>Service Name</th>
+                                            <th>Price</th>
+                                            <th>Duration</th>
+                                            <th>Category</th>
+                                            <th>Status</th>
+                                            <th>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="servicesTableBody">
+                                        <tr>
+                                            <td colspan="6" class="text-center text-muted py-4">
+                                                <i class="fas fa-scissors fa-2x mb-2"></i>
+                                                <p>No services added yet</p>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Business Hours Section -->
+                <section id="hours" class="content-section">
+                    <div class="section-header">
+                        <h2>Business Hours</h2>
+                        <p>Set your business operating hours</p>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-body">
+                            <div id="businessHoursContainer">
+                                <!-- Business hours will be loaded here -->
+                            </div>
+                            <div class="text-end mt-3">
+                                <button class="btn btn-primary" id="saveBusinessHours">
+                                    <i class="fas fa-save"></i> Save Business Hours
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- QR Code Section -->
+                <section id="qrcode" class="content-section">
+                    <div class="section-header">
+                        <h2>Your Business QR Code</h2>
+                        <p>Display this QR code in your salon for customers to scan and book appointments</p>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-body">
+                            <div class="row align-items-center">
+                                <div class="col-md-6 text-center">
+                                    <div class="qrcode-container">
+                                        <img id="qrCodeImage" src="" alt="QR Code" class="img-fluid mb-3" style="max-width: 300px;">
+                                        <div class="qrcode-actions">
+                                            <button class="btn btn-primary me-2" onclick="downloadQRCode()">
+                                                <i class="fas fa-download"></i> Download QR Code
+                                            </button>
+                                            <button class="btn btn-secondary" onclick="printQRCode()">
+                                                <i class="fas fa-print"></i> Print QR Code
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <h4>How to Use Your QR Code</h4>
+                                    <div class="usage-steps">
+                                        <div class="usage-step">
+                                            <div class="step-number">1</div>
+                                            <p>Download and print your QR code</p>
+                                        </div>
+                                        <div class="usage-step">
+                                            <div class="step-number">2</div>
+                                            <p>Display it prominently in your salon</p>
+                                        </div>
+                                        <div class="usage-step">
+                                            <div class="step-number">3</div>
+                                            <p>Customers scan with their phone camera</p>
+                                        </div>
+                                        <div class="usage-step">
+                                            <div class="step-number">4</div>
+                                            <p>They register and book appointments easily</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </main>
+    </div>
+
+    <!-- Add Stylist Modal -->
+    <div class="modal fade" id="addStylistModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="stylistModalTitle">Add New Stylist</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <form id="stylistForm">
+                    <div class="modal-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="stylistName" class="form-label">Name *</label>
+                                    <input type="text" class="form-control" id="stylistName" name="stylistName" required>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="stylistEmail" class="form-label">Email</label>
+                                    <input type="email" class="form-control" id="stylistEmail" name="stylistEmail">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="stylistBio" class="form-label">Bio *</label>
+                            <textarea class="form-control" id="stylistBio" name="stylistBio" rows="3" required></textarea>
+                        </div>
+                        <div class="mb-3">
+                            <label for="stylistSpecialties" class="form-label">Specialties *</label>
+                            <input type="text" class="form-control" id="stylistSpecialties" name="stylistSpecialties" 
+                                   placeholder="e.g., Hair Coloring, Haircuts, Styling" required>
+                            <div class="form-text">Separate multiple specialties with commas</div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="stylistExperience" class="form-label">Years of Experience</label>
+                                    <input type="number" class="form-control" id="stylistExperience" name="stylistExperience" min="0" max="50">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <div class="form-check form-switch mt-4">
+                                        <input class="form-check-input" type="checkbox" id="stylistStatus" name="stylistStatus" checked>
+                                        <label class="form-check-label" for="stylistStatus">Active Stylist</label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-primary" id="stylistSubmitBtn">Save Stylist</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Service Modal -->
+    <div class="modal fade" id="addServiceModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="serviceModalTitle">Add New Service</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <form id="serviceForm">
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label for="serviceName" class="form-label">Service Name *</label>
+                            <input type="text" class="form-control" id="serviceName" name="serviceName" required>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="servicePrice" class="form-label">Price ($) *</label>
+                                    <input type="number" class="form-control" id="servicePrice" name="servicePrice" step="0.01" min="0" required>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="serviceDuration" class="form-label">Duration *</label>
+                                    <select class="form-select" id="serviceDuration" name="serviceDuration" required>
+                                        <option value="15">15 minutes</option>
+                                        <option value="30">30 minutes</option>
+                                        <option value="45">45 minutes</option>
+                                        <option value="60" selected>1 hour</option>
+                                        <option value="90">1.5 hours</option>
+                                        <option value="120">2 hours</option>
+                                        <option value="180">3 hours</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="serviceDescription" class="form-label">Description *</label>
+                            <textarea class="form-control" id="serviceDescription" name="serviceDescription" rows="3" required></textarea>
+                        </div>
+                        <div class="mb-3">
+                            <label for="serviceCategory" class="form-label">Category *</label>
+                            <select class="form-select" id="serviceCategory" name="serviceCategory" required>
+                                <option value="hair">Hair</option>
+                                <option value="nails">Nails</option>
+                                <option value="makeup">Makeup</option>
+                                <option value="skincare">Skin Care</option>
+                                <option value="spa">Spa</option>
+                                <option value="other">Other</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="serviceStatus" name="serviceStatus" checked>
+                                <label class="form-check-label" for="serviceStatus">Available for booking</label>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-primary" id="serviceSubmitBtn">Save Service</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Stylist Modal -->
+    <div class="modal fade" id="editStylistModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Edit Stylist</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <form id="editStylistForm">
+                    <div class="modal-body">
+                        <input type="hidden" id="editStylistId">
+                        <!-- Same form structure as add stylist -->
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-primary">Update Stylist</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Service Modal -->
+    <div class="modal fade" id="editServiceModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Edit Service</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <form id="editServiceForm">
+                    <div class="modal-body">
+                        <input type="hidden" id="editServiceId">
+                        <div class="mb-3">
+                            <label for="editServiceName" class="form-label">Service Name *</label>
+                            <input type="text" class="form-control" id="editServiceName" name="editServiceName" required>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="editServicePrice" class="form-label">Price ($) *</label>
+                                    <input type="number" class="form-control" id="editServicePrice" name="editServicePrice" step="0.01" min="0" required>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="editServiceDuration" class="form-label">Duration *</label>
+                                    <select class="form-select" id="editServiceDuration" name="editServiceDuration" required>
+                                        <option value="15">15 minutes</option>
+                                        <option value="30">30 minutes</option>
+                                        <option value="45">45 minutes</option>
+                                        <option value="60">1 hour</option>
+                                        <option value="90">1.5 hours</option>
+                                        <option value="120">2 hours</option>
+                                        <option value="180">3 hours</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="editServiceDescription" class="form-label">Description *</label>
+                            <textarea class="form-control" id="editServiceDescription" name="editServiceDescription" rows="3" required></textarea>
+                        </div>
+                        <div class="mb-3">
+                            <label for="editServiceCategory" class="form-label">Category *</label>
+                            <select class="form-select" id="editServiceCategory" name="editServiceCategory" required>
+                                <option value="hair">Hair</option>
+                                <option value="nails">Nails</option>
+                                <option value="makeup">Makeup</option>
+                                <option value="skincare">Skin Care</option>
+                                <option value="spa">Spa</option>
+                                <option value="other">Other</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="editServiceAvailable" name="editServiceAvailable">
+                                <label class="form-check-label" for="editServiceAvailable">Available for booking</label>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-primary">Update Service</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="/js/auth.js"></script>
+    <script src="/js/business.js"></script>
+</body>
+</html>

@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Book Your Appointment - SalonPro</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="/styles/main.css" rel="stylesheet">
+    <link href="/styles/customer.css" rel="stylesheet">
+</head>
+<body>
+    <!-- Header -->
+    <header class="customer-header bg-primary text-white">
+        <div class="container">
+            <div class="row align-items-center py-3">
+                <div class="col-md-6">
+                    <div class="logo">
+                        <i class="fas fa-scissors me-2"></i>
+                        <span id="businessName" class="h5 mb-0">Salon Name</span>
+                    </div>
+                </div>
+                <div class="col-md-6 text-end">
+                    <span id="welcomeMessage">Book Your Appointment</span>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="customer-main py-5">
+        <div class="container">
+            <div class="row justify-content-center">
+                <div class="col-lg-8">
+                    <!-- Booking Steps -->
+                    <div id="bookingSteps">
+                        <!-- Progress Indicator -->
+                        <div class="progress-indicator mb-5">
+                            <div class="progress-step active" id="step1-indicator">
+                                <div class="step-number">1</div>
+                                <div class="step-label">Services</div>
+                            </div>
+                            <div class="progress-step" id="step2-indicator">
+                                <div class="step-number">2</div>
+                                <div class="step-label">Stylist</div>
+                            </div>
+                            <div class="progress-step" id="step3-indicator">
+                                <div class="step-number">3</div>
+                                <div class="step-label">Date & Time</div>
+                            </div>
+                            <div class="progress-step" id="step4-indicator">
+                                <div class="step-number">4</div>
+                                <div class="step-label">Details</div>
+                            </div>
+                        </div>
+
+                        <!-- Step 1: Services -->
+                        <div class="booking-step active" id="serviceStep">
+                            <div class="card">
+                                <div class="card-header bg-primary text-white">
+                                    <h4 class="mb-0"><i class="fas fa-scissors me-2"></i>Select Services</h4>
+                                </div>
+                                <div class="card-body">
+                                    <div class="mb-4">
+                                        <label for="serviceSelect" class="form-label">Choose a Service</label>
+                                        <select class="form-select" id="serviceSelect" size="6">
+                                            <option value="">Loading services...</option>
+                                        </select>
+                                    </div>
+                                    <div class="selected-services card bg-light" id="selectedServices" style="display: none;">
+                                        <div class="card-body">
+                                            <h5>Selected Service</h5>
+                                            <div id="selectedServiceDetails"></div>
+                                        </div>
+                                    </div>
+                                    <div class="text-end mt-4">
+                                        <button class="btn btn-primary" onclick="customerBooking.nextStep('stylistStep')" id="nextToStylist" disabled>
+                                            Next: Choose Stylist <i class="fas fa-arrow-right ms-2"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Step 2: Stylist -->
+                        <div class="booking-step" id="stylistStep">
+                            <div class="card">
+                                <div class="card-header bg-primary text-white">
+                                    <h4 class="mb-0"><i class="fas fa-user-tie me-2"></i>Choose Your Stylist</h4>
+                                </div>
+                                <div class="card-body">
+                                    <div class="mb-4">
+                                        <label for="stylistSelect" class="form-label">Select a Stylist</label>
+                                        <select class="form-select" id="stylistSelect">
+                                            <option value="">Loading stylists...</option>
+                                        </select>
+                                    </div>
+                                    <div class="stylist-info card bg-light" id="stylistInfo" style="display: none;">
+                                        <div class="card-body">
+                                            <h5 id="stylistName"></h5>
+                                            <p id="stylistBio" class="mb-2"></p>
+                                            <small class="text-muted" id="stylistExperience"></small>
+                                        </div>
+                                    </div>
+                                    <div class="d-flex justify-content-between mt-4">
+                                        <button class="btn btn-secondary" onclick="customerBooking.previousStep('serviceStep')">
+                                            <i class="fas fa-arrow-left me-2"></i> Back to Services
+                                        </button>
+                                        <button class="btn btn-primary" onclick="customerBooking.nextStep('dateStep')" id="nextToDate" disabled>
+                                            Next: Date & Time <i class="fas fa-arrow-right ms-2"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Step 3: Date & Time -->
+                        <div class="booking-step" id="dateStep">
+                            <div class="card">
+                                <div class="card-header bg-primary text-white">
+                                    <h4 class="mb-0"><i class="fas fa-calendar-alt me-2"></i>Select Date & Time</h4>
+                                </div>
+                                <div class="card-body">
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <div class="mb-4">
+                                                <label for="appointmentDate" class="form-label">Select Date</label>
+                                                <input type="date" class="form-control" id="appointmentDate" min="">
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="mb-4">
+                                                <label class="form-label">Available Time Slots</label>
+                                                <div id="timeSlots" class="time-slots">
+                                                    <div class="text-muted">Select a date first</div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="d-flex justify-content-between mt-4">
+                                        <button class="btn btn-secondary" onclick="customerBooking.previousStep('stylistStep')">
+                                            <i class="fas fa-arrow-left me-2"></i> Back to Stylist
+                                        </button>
+                                        <button class="btn btn-primary" onclick="customerBooking.nextStep('customerInfoStep')" id="nextToInfo" disabled>
+                                            Next: Your Details <i class="fas fa-arrow-right ms-2"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Step 4: Customer Information -->
+                        <div class="booking-step" id="customerInfoStep">
+                            <div class="card">
+                                <div class="card-header bg-primary text-white">
+                                    <h4 class="mb-0"><i class="fas fa-user me-2"></i>Your Information</h4>
+                                </div>
+                                <div class="card-body">
+                                    <form id="bookingForm">
+                                        <div class="row">
+                                            <div class="col-md-6">
+                                                <div class="mb-3">
+                                                    <label for="customerName" class="form-label">Your Name *</label>
+                                                    <input type="text" class="form-control" id="customerName" name="customerName" required>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <div class="mb-3">
+                                                    <label for="customerPhone" class="form-label">Phone Number *</label>
+                                                    <input type="tel" class="form-control" id="customerPhone" name="customerPhone" required>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label for="specialRequests" class="form-label">Special Requests (Optional)</label>
+                                            <textarea class="form-control" id="specialRequests" name="specialRequests" rows="3" 
+                                                      placeholder="Any special requirements or preferences..."></textarea>
+                                        </div>
+                                        
+                                        <!-- Appointment Summary -->
+                                        <div class="card bg-light mt-4">
+                                            <div class="card-header">
+                                                <h5 class="mb-0">Appointment Summary</h5>
+                                            </div>
+                                            <div class="card-body">
+                                                <div class="row">
+                                                    <div class="col-6">
+                                                        <strong>Service:</strong>
+                                                    </div>
+                                                    <div class="col-6" id="summaryService">
+                                                        -
+                                                    </div>
+                                                </div>
+                                                <div class="row">
+                                                    <div class="col-6">
+                                                        <strong>Stylist:</strong>
+                                                    </div>
+                                                    <div class="col-6" id="summaryStylist">
+                                                        -
+                                                    </div>
+                                                </div>
+                                                <div class="row">
+                                                    <div class="col-6">
+                                                        <strong>Date & Time:</strong>
+                                                    </div>
+                                                    <div class="col-6" id="summaryDateTime">
+                                                        -
+                                                    </div>
+                                                </div>
+                                                <div class="row">
+                                                    <div class="col-6">
+                                                        <strong>Duration:</strong>
+                                                    </div>
+                                                    <div class="col-6" id="summaryDuration">
+                                                        -
+                                                    </div>
+                                                </div>
+                                                <hr>
+                                                <div class="row">
+                                                    <div class="col-6">
+                                                        <strong>Total:</strong>
+                                                    </div>
+                                                    <div class="col-6" id="summaryTotal">
+                                                        $0.00
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div class="d-flex justify-content-between mt-4">
+                                            <button type="button" class="btn btn-secondary" onclick="customerBooking.previousStep('dateStep')">
+                                                <i class="fas fa-arrow-left me-2"></i> Back to Time
+                                            </button>
+                                            <button type="submit" class="btn btn-success btn-lg">
+                                                <i class="fas fa-calendar-check me-2"></i> Confirm Booking
+                                            </button>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Confirmation Step -->
+                    <div id="confirmationStep" style="display: none;">
+                        <div class="card">
+                            <div class="card-body text-center py-5">
+                                <div class="success-icon mb-4">
+                                    <i class="fas fa-check-circle text-success" style="font-size: 4rem;"></i>
+                                </div>
+                                <h2 class="text-success mb-3">Appointment Booked Successfully!</h2>
+                                <div id="confirmationDetails" class="mb-4">
+                                    <!-- Confirmation details will be shown here -->
+                                </div>
+                                <p class="text-muted mb-4">
+                                    You will receive a confirmation message shortly. 
+                                    Please arrive 10 minutes before your appointment.
+                                </p>
+                                <div class="d-flex justify-content-center gap-3">
+                                    <button class="btn btn-primary" onclick="customerBooking.bookAnother()">
+                                        <i class="fas fa-plus me-2"></i> Book Another Appointment
+                                    </button>
+                                    <button class="btn btn-outline-secondary" onclick="window.print()">
+                                        <i class="fas fa-print me-2"></i> Print Confirmation
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="customer-footer bg-dark text-white py-4">
+        <div class="container">
+            <div class="row">
+                <div class="col-md-6">
+                    <p class="mb-0">&copy; 2024 SalonPro. Booked with <span id="footerBusinessName">Salon Name</span></p>
+                </div>
+                <div class="col-md-6 text-end">
+                    <p class="mb-0">Need help? Call: <span id="footerBusinessPhone">Loading...</span></p>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Loading Overlay -->
+    <div class="loading-overlay" id="loadingOverlay" style="display: none;">
+        <div class="loading-spinner">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <p class="mt-3">Processing your booking...</p>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="/js/customer.js"></script>
+</body>
+</html>

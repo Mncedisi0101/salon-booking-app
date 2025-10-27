@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SalonPro - Professional Salon Booking System</title>
+    <link rel="stylesheet" href="/styles/main.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="nav-logo">
+                <i class="fas fa-scissors"></i>
+                <span>SalonPro</span>
+            </div>
+            <div class="nav-actions">
+                <button class="btn btn-outline" onclick="openModal('businessLoginModal')">
+                    <i class="fas fa-sign-in-alt"></i> Business Login
+                </button>
+                <button class="btn btn-outline" onclick="openModal('businessRegisterModal')">
+                    <i class="fas fa-store"></i> Register Business
+                </button>
+                <button class="btn btn-primary" onclick="openModal('adminLoginModal')">
+                    <i class="fas fa-user-shield"></i> Admin Login
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section class="hero">
+        <div class="hero-container">
+            <div class="hero-content">
+                <h1 class="hero-title">Transform Your Salon Business</h1>
+                <p class="hero-subtitle">Streamline bookings, manage appointments, and grow your clientele with our all-in-one salon management platform</p>
+                <div class="hero-actions">
+                    <button class="btn btn-primary btn-large" onclick="openModal('businessRegisterModal')">
+                        <i class="fas fa-rocket"></i> Start Your Business
+                    </button>
+                    <button class="btn btn-secondary btn-large" onclick="openModal('businessLoginModal')">
+                        <i class="fas fa-sign-in-alt"></i> Business Login
+                    </button>
+                    <button class="btn btn-outline btn-large" onclick="scrollToFeatures()">
+                        <i class="fas fa-info-circle"></i> Learn More
+                    </button>
+                </div>
+            </div>
+            <div class="hero-image">
+                <div class="image-placeholder">
+                    <i class="fas fa-spa"></i>
+                    <p>Salon Management Dashboard</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Features Section -->
+    <section class="features" id="features">
+        <div class="container">
+            <h2 class="section-title">Why Choose SalonPro?</h2>
+            <div class="features-grid">
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-qrcode"></i>
+                    </div>
+                    <h3>QR Code Booking</h3>
+                    <p>Customers can easily book appointments by scanning your unique QR code</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-calendar-check"></i>
+                    </div>
+                    <h3>Smart Scheduling</h3>
+                    <p>Automated appointment management with real-time availability</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-bell"></i>
+                    </div>
+                    <h3>Automated Reminders</h3>
+                    <p>Email and SMS notifications to reduce no-shows</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-chart-line"></i>
+                    </div>
+                    <h3>Business Analytics</h3>
+                    <p>Track performance and make data-driven decisions</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- How It Works Section -->
+    <section class="how-it-works">
+        <div class="container">
+            <h2 class="section-title">How It Works</h2>
+            <div class="steps">
+                <div class="step">
+                    <div class="step-number">1</div>
+                    <h3>Register Your Business</h3>
+                    <p>Create your business profile and get your unique QR code</p>
+                </div>
+                <div class="step">
+                    <div class="step-number">2</div>
+                    <h3>Display QR Code</h3>
+                    <p>Place your QR code in your salon for customers to scan</p>
+                </div>
+                <div class="step">
+                    <div class="step-number">3</div>
+                    <h3>Customers Book</h3>
+                    <p>Customers scan, register, and book appointments easily</p>
+                </div>
+                <div class="step">
+                    <div class="step-number">4</div>
+                    <h3>Manage & Grow</h3>
+                    <p>Use your dashboard to manage appointments and grow your business</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-section">
+                    <h3>SalonPro</h3>
+                    <p>Professional salon booking and management system for modern businesses.</p>
+                </div>
+                <div class="footer-section">
+                    <h4>Quick Links</h4>
+                    <p><a href="javascript:void(0)" onclick="openModal('businessLoginModal')" style="color: white; text-decoration: none;">Business Login</a></p>
+                    <p><a href="javascript:void(0)" onclick="openModal('businessRegisterModal')" style="color: white; text-decoration: none;">Register Business</a></p>
+                    <p><a href="javascript:void(0)" onclick="openModal('adminLoginModal')" style="color: white; text-decoration: none;">Admin Login</a></p>
+                </div>
+                <div class="footer-section">
+                    <h4>Contact</h4>
+                    <p>Email: support@salonpro.com</p>
+                    <p>Phone: +1 (555) 123-4567</p>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2024 SalonPro. All rights reserved.</p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Business Login Modal -->
+    <div id="businessLoginModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Business Login</h2>
+                <span class="close" onclick="closeModal('businessLoginModal')">&times;</span>
+            </div>
+            <form id="businessLoginForm" class="modal-form">
+                <div class="form-group">
+                    <label for="businessLoginEmail">Email *</label>
+                    <input type="email" id="businessLoginEmail" name="businessLoginEmail" required>
+                </div>
+                <div class="form-group">
+                    <label for="businessLoginPassword">Password *</label>
+                    <input type="password" id="businessLoginPassword" name="businessLoginPassword" required>
+                </div>
+                <div class="form-group checkbox-group">
+                    <input type="checkbox" id="rememberBusiness" name="rememberBusiness">
+                    <label for="rememberBusiness">Remember me</label>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal('businessLoginModal')">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Login to Dashboard</button>
+                </div>
+                <div class="text-center mt-3">
+                    <p>Don't have an account? <a href="javascript:void(0)" onclick="switchToRegister()" style="color: var(--orange-soda); text-decoration: none;">Register here</a></p>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Business Registration Modal -->
+    <div id="businessRegisterModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Register Your Business</h2>
+                <span class="close" onclick="closeModal('businessRegisterModal')">&times;</span>
+            </div>
+            <form id="businessRegisterForm" class="modal-form">
+                <div class="form-group">
+                    <label for="ownerName">Owner Name *</label>
+                    <input type="text" id="ownerName" name="ownerName" required>
+                </div>
+                <div class="form-group">
+                    <label for="businessName">Business Name *</label>
+                    <input type="text" id="businessName" name="businessName" required>
+                </div>
+                <div class="form-group">
+                    <label for="businessPhone">Phone Number *</label>
+                    <input type="tel" id="businessPhone" name="businessPhone" required>
+                </div>
+                <div class="form-group">
+                    <label for="businessEmail">Email *</label>
+                    <input type="email" id="businessEmail" name="businessEmail" required>
+                </div>
+                <div class="form-group">
+                    <label for="businessPassword">Password *</label>
+                    <input type="password" id="businessPassword" name="businessPassword" required>
+                </div>
+                <div class="form-group">
+                    <label for="confirmPassword">Confirm Password *</label>
+                    <input type="password" id="confirmPassword" name="confirmPassword" required>
+                </div>
+                <div class="form-group checkbox-group">
+                    <input type="checkbox" id="terms" name="terms" required>
+                    <label for="terms">I agree to the Terms & Conditions</label>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal('businessRegisterModal')">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Register Business</button>
+                </div>
+                <div class="text-center mt-3">
+                    <p>Already have an account? <a href="javascript:void(0)" onclick="switchToLogin()" style="color: var(--orange-soda); text-decoration: none;">Login here</a></p>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Admin Login Modal -->
+    <div id="adminLoginModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Admin Login</h2>
+                <span class="close" onclick="closeModal('adminLoginModal')">&times;</span>
+            </div>
+            <form id="adminLoginForm" class="modal-form">
+                <div class="form-group">
+                    <label for="adminEmail">Email *</label>
+                    <input type="email" id="adminEmail" name="adminEmail" required>
+                </div>
+                <div class="form-group">
+                    <label for="adminPassword">Password *</label>
+                    <input type="password" id="adminPassword" name="adminPassword" required>
+                </div>
+                <div class="form-group checkbox-group">
+                    <input type="checkbox" id="rememberMe" name="rememberMe">
+                    <label for="rememberMe">Remember me</label>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal('adminLoginModal')">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Login to Dashboard</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="/js/main.js"></script>
+    <script src="/js/auth.js"></script>
+</body>
+</html>
