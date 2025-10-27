@@ -48,7 +48,7 @@ class AuthManager {
             // Customers typically use /customer; do not force redirect if already there
             if (!path.startsWith('/customer')) {
                 // Optional: avoid redirecting from marketing/index
-                // window.location.href = '/customer';
+                window.location.href = '/customer';
             }
         }
     }

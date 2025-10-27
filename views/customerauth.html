@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - SalonPro</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --primary-color: #0d6efd;
+            --primary-hover: #0b5ed7;
+            --light-bg: #f8f9fa;
+        }
+        
+        body {
+            background-color: var(--light-bg);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        .auth-header {
+            background-color: var(--primary-color);
+            color: white;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .auth-container {
+            max-width: 900px;
+            margin: 2rem auto;
+        }
+        
+        .auth-card {
+            border: none;
+            border-radius: 10px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        
+        .auth-card-header {
+            background-color: var(--primary-color);
+            color: white;
+            padding: 1.5rem;
+            text-align: center;
+        }
+        
+        .auth-tabs {
+            display: flex;
+            border-bottom: 1px solid #dee2e6;
+        }
+        
+        .auth-tab {
+            flex: 1;
+            text-align: center;
+            padding: 1rem;
+            cursor: pointer;
+            transition: all 0.3s;
+            background-color: #f8f9fa;
+            border: none;
+        }
+        
+        .auth-tab.active {
+            background-color: white;
+            border-bottom: 3px solid var(--primary-color);
+            font-weight: 600;
+        }
+        
+        .auth-tab:hover:not(.active) {
+            background-color: #e9ecef;
+        }
+        
+        .auth-form {
+            padding: 2rem;
+        }
+        
+        .form-control:focus {
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25);
+        }
+        
+        .btn-primary {
+            background-color: var(--primary-color);
+            border-color: var(--primary-color);
+        }
+        
+        .btn-primary:hover {
+            background-color: var(--primary-hover);
+            border-color: var(--primary-hover);
+        }
+        
+        .divider {
+            display: flex;
+            align-items: center;
+            text-align: center;
+            margin: 1.5rem 0;
+        }
+        
+        .divider::before,
+        .divider::after {
+            content: '';
+            flex: 1;
+            border-bottom: 1px solid #dee2e6;
+        }
+        
+        .divider span {
+            padding: 0 10px;
+            color: #6c757d;
+            font-size: 0.9rem;
+        }
+        
+        .social-login {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+        
+        .social-btn {
+            flex: 1;
+            padding: 0.75rem;
+            border: 1px solid #dee2e6;
+            border-radius: 5px;
+            background-color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            transition: all 0.3s;
+        }
+        
+        .social-btn:hover {
+            background-color: #f8f9fa;
+        }
+        
+        .google-btn {
+            color: #db4437;
+        }
+        
+        .facebook-btn {
+            color: #4267B2;
+        }
+        
+        .auth-footer {
+            background-color: #343a40;
+            color: white;
+            margin-top: 2rem;
+        }
+        
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+        }
+        
+        .loading-spinner {
+            background-color: white;
+            padding: 2rem;
+            border-radius: 10px;
+            text-align: center;
+        }
+        
+        .form-check-input:checked {
+            background-color: var(--primary-color);
+            border-color: var(--primary-color);
+        }
+        
+        .password-toggle {
+            position: absolute;
+            right: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            color: #6c757d;
+            cursor: pointer;
+        }
+        
+        .password-container {
+            position: relative;
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <header class="auth-header">
+        <div class="container">
+            <div class="row align-items-center py-3">
+                <div class="col-md-6">
+                    <div class="logo">
+                        <i class="fas fa-scissors me-2"></i>
+                        <span class="h5 mb-0">SalonPro</span>
+                    </div>
+                </div>
+                <div class="col-md-6 text-end">
+                    <span>Book Your Appointment</span>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="auth-main py-5">
+        <div class="container auth-container">
+            <div class="row justify-content-center">
+                <div class="col-lg-8">
+                    <div class="auth-card">
+                        <div class="auth-card-header">
+                            <h2 class="mb-0">Welcome to SalonPro</h2>
+                            <p class="mb-0 mt-2">Sign in to book your appointment or create a new account</p>
+                        </div>
+                        
+                        <!-- Tabs for Login/Signup -->
+                        <div class="auth-tabs">
+                            <button class="auth-tab active" id="loginTab">Login</button>
+                            <button class="auth-tab" id="signupTab">Sign Up</button>
+                        </div>
+                        
+                        <!-- Login Form -->
+                        <div class="auth-form" id="loginForm">
+                            <form id="loginFormElement">
+                                <div class="mb-3">
+                                    <label for="loginEmail" class="form-label">Email Address</label>
+                                    <input type="email" class="form-control" id="loginEmail" name="email" required>
+                                </div>
+                                
+                                <div class="mb-3 password-container">
+                                    <label for="loginPassword" class="form-label">Password</label>
+                                    <input type="password" class="form-control" id="loginPassword" name="password" required>
+                                    <button type="button" class="password-toggle" id="toggleLoginPassword">
+                                        <i class="fas fa-eye"></i>
+                                    </button>
+                                </div>
+                                
+                                <div class="mb-3 form-check">
+                                    <input type="checkbox" class="form-check-input" id="rememberMe">
+                                    <label class="form-check-label" for="rememberMe">Remember me</label>
+                                    <a href="#" class="float-end">Forgot password?</a>
+                                </div>
+                                
+                                <button type="submit" class="btn btn-primary w-100 py-2 mb-3">Sign In</button>
+                                
+                                <div class="divider">
+                                    <span>Or continue with</span>
+                                </div>
+                                
+                                <div class="social-login">
+                                    <button type="button" class="social-btn google-btn">
+                                        <i class="fab fa-google"></i> Google
+                                    </button>
+                                    <button type="button" class="social-btn facebook-btn">
+                                        <i class="fab fa-facebook-f"></i> Facebook
+                                    </button>
+                                </div>
+                                
+                                <div class="text-center">
+                                    <p>Don't have an account? <a href="#" id="switchToSignup">Sign up</a></p>
+                                </div>
+                            </form>
+                        </div>
+                        
+                        <!-- Signup Form -->
+                        <div class="auth-form" id="signupForm" style="display: none;">
+                            <form id="signupFormElement">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label for="signupFirstName" class="form-label">First Name</label>
+                                            <input type="text" class="form-control" id="signupFirstName" name="firstName" required>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label for="signupLastName" class="form-label">Last Name</label>
+                                            <input type="text" class="form-control" id="signupLastName" name="lastName" required>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label for="signupEmail" class="form-label">Email Address</label>
+                                    <input type="email" class="form-control" id="signupEmail" name="email" required>
+                                </div>
+                                
+                                <div class="mb-3 password-container">
+                                    <label for="signupPassword" class="form-label">Password</label>
+                                    <input type="password" class="form-control" id="signupPassword" name="password" required>
+                                    <button type="button" class="password-toggle" id="toggleSignupPassword">
+                                        <i class="fas fa-eye"></i>
+                                    </button>
+                                </div>
+                                
+                                <div class="mb-3 password-container">
+                                    <label for="confirmPassword" class="form-label">Confirm Password</label>
+                                    <input type="password" class="form-control" id="confirmPassword" name="confirmPassword" required>
+                                    <button type="button" class="password-toggle" id="toggleConfirmPassword">
+                                        <i class="fas fa-eye"></i>
+                                    </button>
+                                </div>
+                                
+                                <div class="mb-3 form-check">
+                                    <input type="checkbox" class="form-check-input" id="agreeTerms" required>
+                                    <label class="form-check-label" for="agreeTerms">
+                                        I agree to the <a href="#">Terms of Service</a> and <a href="#">Privacy Policy</a>
+                                    </label>
+                                </div>
+                                
+                                <button type="submit" class="btn btn-primary w-100 py-2 mb-3">Create Account</button>
+                                
+                                <div class="divider">
+                                    <span>Or sign up with</span>
+                                </div>
+                                
+                                <div class="social-login">
+                                    <button type="button" class="social-btn google-btn">
+                                        <i class="fab fa-google"></i> Google
+                                    </button>
+                                    <button type="button" class="social-btn facebook-btn">
+                                        <i class="fab fa-facebook-f"></i> Facebook
+                                    </button>
+                                </div>
+                                
+                                <div class="text-center">
+                                    <p>Already have an account? <a href="#" id="switchToLogin">Sign in</a></p>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="auth-footer py-4">
+        <div class="container">
+            <div class="row">
+                <div class="col-md-6">
+                    <p class="mb-0">&copy; 2024 SalonPro. All rights reserved.</p>
+                </div>
+                <div class="col-md-6 text-end">
+                    <p class="mb-0">Need help? Call: <span>(123) 456-7890</span></p>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Loading Overlay -->
+    <div class="loading-overlay" id="loadingOverlay" style="display: none;">
+        <div class="loading-spinner">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <p class="mt-3">Processing your request...</p>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Tab switching functionality
+            const loginTab = document.getElementById('loginTab');
+            const signupTab = document.getElementById('signupTab');
+            const loginForm = document.getElementById('loginForm');
+            const signupForm = document.getElementById('signupForm');
+            const switchToSignup = document.getElementById('switchToSignup');
+            const switchToLogin = document.getElementById('switchToLogin');
+            
+            // Switch to login tab
+            function showLogin() {
+                loginTab.classList.add('active');
+                signupTab.classList.remove('active');
+                loginForm.style.display = 'block';
+                signupForm.style.display = 'none';
+            }
+            
+            // Switch to signup tab
+            function showSignup() {
+                signupTab.classList.add('active');
+                loginTab.classList.remove('active');
+                signupForm.style.display = 'block';
+                loginForm.style.display = 'none';
+            }
+            
+            // Event listeners for tab switching
+            loginTab.addEventListener('click', showLogin);
+            signupTab.addEventListener('click', showSignup);
+            switchToSignup.addEventListener('click', function(e) {
+                e.preventDefault();
+                showSignup();
+            });
+            switchToLogin.addEventListener('click', function(e) {
+                e.preventDefault();
+                showLogin();
+            });
+            
+            // Password toggle functionality
+            function setupPasswordToggle(passwordFieldId, toggleButtonId) {
+                const passwordField = document.getElementById(passwordFieldId);
+                const toggleButton = document.getElementById(toggleButtonId);
+                
+                toggleButton.addEventListener('click', function() {
+                    const type = passwordField.getAttribute('type') === 'password' ? 'text' : 'password';
+                    passwordField.setAttribute('type', type);
+                    
+                    // Toggle eye icon
+                    const icon = this.querySelector('i');
+                    if (type === 'password') {
+                        icon.classList.remove('fa-eye-slash');
+                        icon.classList.add('fa-eye');
+                    } else {
+                        icon.classList.remove('fa-eye');
+                        icon.classList.add('fa-eye-slash');
+                    }
+                });
+            }
+            
+            // Setup password toggles
+            setupPasswordToggle('loginPassword', 'toggleLoginPassword');
+            setupPasswordToggle('signupPassword', 'toggleSignupPassword');
+            setupPasswordToggle('confirmPassword', 'toggleConfirmPassword');
+            
+            // Form submission handlers
+            document.getElementById('loginFormElement').addEventListener('submit', function(e) {
+                e.preventDefault();
+                // Show loading overlay
+                document.getElementById('loadingOverlay').style.display = 'flex';
+                
+                // Simulate API call
+                setTimeout(function() {
+                    // Hide loading overlay
+                    document.getElementById('loadingOverlay').style.display = 'none';
+                    
+                    // Redirect to booking page after successful login
+                    window.location.href = 'customer.html';
+                }, 1500);
+            });
+            
+            document.getElementById('signupFormElement').addEventListener('submit', function(e) {
+                e.preventDefault();
+                
+                // Validate password match
+                const password = document.getElementById('signupPassword').value;
+                const confirmPassword = document.getElementById('confirmPassword').value;
+                
+                if (password !== confirmPassword) {
+                    alert('Passwords do not match!');
+                    return;
+                }
+                
+                // Show loading overlay
+                document.getElementById('loadingOverlay').style.display = 'flex';
+                
+                // Simulate API call
+                setTimeout(function() {
+                    // Hide loading overlay
+                    document.getElementById('loadingOverlay').style.display = 'none';
+                    
+                    // Redirect to booking page after successful signup
+                    window.location.href = 'customer.html';
+                }, 1500);
+            });
+            
+            // Social login buttons
+            document.querySelectorAll('.social-btn').forEach(button => {
+                button.addEventListener('click', function() {
+                    // Show loading overlay
+                    document.getElementById('loadingOverlay').style.display = 'flex';
+                    
+                    // Simulate social login
+                    setTimeout(function() {
+                        // Hide loading overlay
+                        document.getElementById('loadingOverlay').style.display = 'none';
+                        
+                        // Redirect to booking page
+                        window.location.href = 'customer.html';
+                    }, 1500);
+                });
+            });
+        });
+    </script>
+</body>
+</html>
