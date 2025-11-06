@@ -161,7 +161,10 @@ class CustomerBooking {
         const newSelectElement = selectElement.cloneNode(true);
         selectElement.parentNode.replaceChild(newSelectElement, selectElement);
 
-        newSelectElement.addEventListener('change', (e) => {
+        // Get the newly inserted element from the DOM
+        const freshSelectElement = document.getElementById('serviceSelect');
+        
+        freshSelectElement.addEventListener('change', (e) => {
             if (e.target.value) {
                 const selectedOption = e.target.options[e.target.selectedIndex];
                 this.selectService(e.target.value, selectedOption);
@@ -257,7 +260,10 @@ class CustomerBooking {
         const newSelectElement = selectElement.cloneNode(true);
         selectElement.parentNode.replaceChild(newSelectElement, selectElement);
 
-        newSelectElement.addEventListener('change', (e) => {
+        // Get the newly inserted element from the DOM
+        const freshSelectElement = document.getElementById('stylistSelect');
+        
+        freshSelectElement.addEventListener('change', (e) => {
             if (e.target.value) {
                 const selectedOption = e.target.options[e.target.selectedIndex];
                 this.selectStylist(e.target.value, selectedOption);
