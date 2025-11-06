@@ -343,7 +343,253 @@ class BusinessDashboard {
     }
 
     async loadAppointments() {
-        return;
+        try {
+            const statusFilter = document.getElementById('appointmentStatus')?.value || 'all';
+            const dateFilter = document.getElementById('appointmentDate')?.value || '';
+            
+            let url = '/api/business/appointments?';
+            if (statusFilter && statusFilter !== 'all') {
+                url += `status=${statusFilter}&`;
+            }
+            if (dateFilter) {
+                url += `date=${dateFilter}&`;
+            }
+            
+            const response = await fetch(url, {
+                headers: this.authManager.getAuthHeaders()
+            });
+            
+            const appointments = await response.json();
+            this.renderAppointments(appointments || []);
+            this.updateDashboardStats(appointments || []);
+        } catch (error) {
+            console.error('Error loading appointments:', error);
+        }
+    }
+
+    renderAppointments(appointments) {
+        const tbody = document.getElementById('appointmentsTableBody');
+        if (!tbody) return;
+        
+        tbody.innerHTML = '';
+        
+        if (!appointments.length) {
+            const row = document.createElement('tr');
+            row.innerHTML = '<td colspan="8" class="text-center text-muted py-4"><i class="fas fa-calendar-times fa-2x mb-2"></i><p>No appointments found</p></td>';
+            tbody.appendChild(row);
+            return;
+        }
+        
+        appointments.forEach(appointment => {
+            const row = document.createElement('tr');
+            const statusClass = this.getStatusClass(appointment.status);
+            const customerName = appointment.customers?.name || 'N/A';
+            const customerPhone = appointment.customers?.phone || 'N/A';
+            const serviceName = appointment.services?.name || 'N/A';
+            const stylistName = appointment.stylists?.name || 'N/A';
+            
+            row.innerHTML = `
+                <td>${this.formatDate(appointment.appointment_date)}</td>
+                <td>${appointment.appointment_time}</td>
+                <td>${customerName}</td>
+                <td>${customerPhone}</td>
+                <td>${serviceName}</td>
+                <td>${stylistName}</td>
+                <td><span class="badge ${statusClass}">${this.capitalizeFirst(appointment.status)}</span></td>
+                <td>
+                    <div class="btn-group">
+                        ${appointment.status === 'pending' ? `
+                            <button class="btn btn-sm btn-success confirm-appointment" data-id="${appointment.id}" title="Confirm">
+                                <i class="fas fa-check"></i>
+                            </button>
+                        ` : ''}
+                        ${appointment.status === 'confirmed' ? `
+                            <button class="btn btn-sm btn-primary complete-appointment" data-id="${appointment.id}" title="Complete">
+                                <i class="fas fa-check-double"></i>
+                            </button>
+                        ` : ''}
+                        ${appointment.status !== 'completed' && appointment.status !== 'cancelled' ? `
+                            <button class="btn btn-sm btn-danger cancel-appointment" data-id="${appointment.id}" title="Cancel">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        ` : ''}
+                        <button class="btn btn-sm btn-info view-appointment" data-id="${appointment.id}" title="View Details">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                    </div>
+                </td>
+            `;
+            tbody.appendChild(row);
+        });
+        
+        this.attachAppointmentEventListeners(appointments);
+    }
+
+    attachAppointmentEventListeners(appointments) {
+        // Confirm appointment buttons
+        document.querySelectorAll('.confirm-appointment').forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+                const id = e.currentTarget.getAttribute('data-id');
+                if (confirm('Confirm this appointment?')) {
+                    await this.updateAppointmentStatus(id, 'confirmed');
+                }
+            });
+        });
+        
+        // Complete appointment buttons
+        document.querySelectorAll('.complete-appointment').forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+                const id = e.currentTarget.getAttribute('data-id');
+                if (confirm('Mark this appointment as completed?')) {
+                    await this.updateAppointmentStatus(id, 'completed');
+                }
+            });
+        });
+        
+        // Cancel appointment buttons
+        document.querySelectorAll('.cancel-appointment').forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+                const id = e.currentTarget.getAttribute('data-id');
+                if (confirm('Cancel this appointment?')) {
+                    await this.updateAppointmentStatus(id, 'cancelled');
+                }
+            });
+        });
+        
+        // View appointment buttons
+        document.querySelectorAll('.view-appointment').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const id = e.currentTarget.getAttribute('data-id');
+                const appointment = appointments.find(a => a.id === id);
+                if (appointment) {
+                    this.showAppointmentDetails(appointment);
+                }
+            });
+        });
+    }
+
+    async updateAppointmentStatus(appointmentId, status) {
+        try {
+            const response = await fetch(`/api/business/appointments/${appointmentId}/status`, {
+                method: 'PUT',
+                headers: this.authManager.getAuthHeaders(),
+                body: JSON.stringify({ status })
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                alert(`Appointment ${status} successfully!`);
+                this.loadAppointments();
+            } else {
+                alert(data.error || 'Failed to update appointment');
+            }
+        } catch (error) {
+            console.error('Error updating appointment:', error);
+            alert('Failed to update appointment');
+        }
+    }
+
+    showAppointmentDetails(appointment) {
+        const customerName = appointment.customers?.name || 'N/A';
+        const customerPhone = appointment.customers?.phone || 'N/A';
+        const serviceName = appointment.services?.name || 'N/A';
+        const servicePrice = appointment.services?.price || 0;
+        const serviceDuration = appointment.services?.duration || 0;
+        const stylistName = appointment.stylists?.name || 'N/A';
+        
+        const details = `
+            <div class="appointment-details">
+                <p><strong>Customer:</strong> ${customerName}</p>
+                <p><strong>Phone:</strong> ${customerPhone}</p>
+                <p><strong>Service:</strong> ${serviceName}</p>
+                <p><strong>Price:</strong> $${servicePrice}</p>
+                <p><strong>Duration:</strong> ${serviceDuration} minutes</p>
+                <p><strong>Stylist:</strong> ${stylistName}</p>
+                <p><strong>Date:</strong> ${this.formatDate(appointment.appointment_date)}</p>
+                <p><strong>Time:</strong> ${appointment.appointment_time}</p>
+                <p><strong>Status:</strong> <span class="badge ${this.getStatusClass(appointment.status)}">${this.capitalizeFirst(appointment.status)}</span></p>
+                ${appointment.special_requests ? `<p><strong>Special Requests:</strong> ${appointment.special_requests}</p>` : ''}
+                <p><strong>Booked on:</strong> ${this.formatDateTime(appointment.created_at)}</p>
+            </div>
+        `;
+        
+        // Show in a modal or alert (we'll use alert for now, can be replaced with a modal)
+        const modal = confirm(details + '\n\nOK to close');
+    }
+
+    updateDashboardStats(appointments) {
+        const today = new Date().toISOString().split('T')[0];
+        
+        const todayAppointments = appointments.filter(a => a.appointment_date === today).length;
+        const pendingAppointments = appointments.filter(a => a.status === 'pending').length;
+        const completedAppointments = appointments.filter(a => a.status === 'completed').length;
+        
+        const todayEl = document.getElementById('todayAppointments');
+        const pendingEl = document.getElementById('pendingAppointments');
+        const completedEl = document.getElementById('completedAppointments');
+        
+        if (todayEl) todayEl.textContent = todayAppointments;
+        if (pendingEl) pendingEl.textContent = pendingAppointments;
+        if (completedEl) completedEl.textContent = completedAppointments;
+        
+        // Update recent appointments list on dashboard
+        this.updateRecentAppointmentsList(appointments.slice(0, 5));
+    }
+
+    updateRecentAppointmentsList(recentAppointments) {
+        const listContainer = document.getElementById('recentAppointmentsList');
+        if (!listContainer) return;
+        
+        listContainer.innerHTML = '';
+        
+        if (!recentAppointments.length) {
+            listContainer.innerHTML = '<div class="text-center text-muted py-3"><i class="fas fa-calendar-times fa-2x mb-2"></i><p>No recent appointments</p></div>';
+            return;
+        }
+        
+        recentAppointments.forEach(appointment => {
+            const customerName = appointment.customers?.name || 'N/A';
+            const serviceName = appointment.services?.name || 'N/A';
+            const statusClass = this.getStatusClass(appointment.status);
+            
+            const item = document.createElement('div');
+            item.className = 'appointment-item';
+            item.innerHTML = `
+                <div class="d-flex justify-content-between align-items-center p-2 border-bottom">
+                    <div>
+                        <strong>${customerName}</strong><br>
+                        <small>${serviceName} - ${this.formatDate(appointment.appointment_date)} ${appointment.appointment_time}</small>
+                    </div>
+                    <span class="badge ${statusClass}">${this.capitalizeFirst(appointment.status)}</span>
+                </div>
+            `;
+            listContainer.appendChild(item);
+        });
+    }
+
+    getStatusClass(status) {
+        switch(status) {
+            case 'pending': return 'bg-warning text-dark';
+            case 'confirmed': return 'bg-info';
+            case 'completed': return 'bg-success';
+            case 'cancelled': return 'bg-danger';
+            default: return 'bg-secondary';
+        }
+    }
+
+    capitalizeFirst(str) {
+        return str.charAt(0).toUpperCase() + str.slice(1);
+    }
+
+    formatDate(dateStr) {
+        const date = new Date(dateStr);
+        return date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+    }
+
+    formatDateTime(dateStr) {
+        const date = new Date(dateStr);
+        return date.toLocaleString('en-US', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
     }
 
     async loadBusinessHours() {
@@ -470,6 +716,17 @@ class BusinessDashboard {
         if (quickAddService) quickAddService.addEventListener('click', () => this.openAddServiceModal?.());
         const quickToQr = document.querySelector('.quick-action-btn[onclick*="qrcode"]');
         if (quickToQr) quickToQr.addEventListener('click', () => this.showSection('qrcode'));
+
+        // Appointment filters
+        const appointmentStatus = document.getElementById('appointmentStatus');
+        if (appointmentStatus) {
+            appointmentStatus.addEventListener('change', () => this.loadAppointments());
+        }
+        
+        const appointmentDate = document.getElementById('appointmentDate');
+        if (appointmentDate) {
+            appointmentDate.addEventListener('change', () => this.loadAppointments());
+        }
 
         // Service form submissions
         const addServiceForm = document.getElementById('serviceForm');
