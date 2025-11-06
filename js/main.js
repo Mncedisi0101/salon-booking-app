@@ -113,7 +113,7 @@ class MainApp {
 
                     if (success) {
                         // Redirect to booking page after successful login
-                        window.location.href = businessId ? `customer.html?business=${businessId}` : 'customer.html';
+                        window.location.href = businessId ? `/customer?business=${businessId}` : '/customer';
                     }
                 } catch (error) {
                     console.error('Login error:', error);
@@ -159,7 +159,7 @@ class MainApp {
 
                     if (success) {
                         // Redirect to booking page after successful signup
-                        window.location.href = businessId ? `customer.html?business=${businessId}` : 'customer.html';
+                        window.location.href = businessId ? `/customer?business=${businessId}` : '/customer';
                     }
                 } catch (error) {
                     console.error('Registration error:', error);
