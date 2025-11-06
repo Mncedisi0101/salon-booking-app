@@ -149,36 +149,19 @@ class CustomerBooking {
             option.dataset.duration = service.duration;
             selectElement.appendChild(option);
         });
-
-        this.attachServiceSelectionListeners();
-    }
-
-    attachServiceSelectionListeners() {
-        const selectElement = document.getElementById('serviceSelect');
-        if (!selectElement) return;
-
-        // Remove any existing listeners by cloning and replacing
-        const newSelectElement = selectElement.cloneNode(true);
-        selectElement.parentNode.replaceChild(newSelectElement, selectElement);
-
-        // Get the newly inserted element from the DOM
-        const freshSelectElement = document.getElementById('serviceSelect');
-        
-        freshSelectElement.addEventListener('change', (e) => {
-            if (e.target.value) {
-                const selectedOption = e.target.options[e.target.selectedIndex];
-                this.selectService(e.target.value, selectedOption);
-            }
-        });
     }
 
     selectService(serviceId, selectedOption) {
+        console.log('selectService called with:', serviceId);
+        
         this.selectedService = {
             id: serviceId,
             name: selectedOption.dataset.name,
             price: selectedOption.dataset.price,
             duration: selectedOption.dataset.duration
         };
+
+        console.log('Selected service:', this.selectedService);
 
         // Update selected services display
         const selectedServicesDiv = document.getElementById('selectedServices');
@@ -200,8 +183,12 @@ class CustomerBooking {
 
         // Enable next button
         const nextButton = document.getElementById('nextToStylist');
+        console.log('Next button found:', nextButton);
+        console.log('Button disabled before:', nextButton ? nextButton.disabled : 'N/A');
+        
         if (nextButton) {
             nextButton.disabled = false;
+            console.log('Button disabled after:', nextButton.disabled);
         }
     }
 
@@ -247,27 +234,6 @@ class CustomerBooking {
             option.dataset.bio = stylist.bio || 'No bio available';
             option.dataset.experience = stylist.experience || 0;
             selectElement.appendChild(option);
-        });
-
-        this.attachStylistSelectionListeners();
-    }
-
-    attachStylistSelectionListeners() {
-        const selectElement = document.getElementById('stylistSelect');
-        if (!selectElement) return;
-
-        // Remove any existing listeners by cloning and replacing
-        const newSelectElement = selectElement.cloneNode(true);
-        selectElement.parentNode.replaceChild(newSelectElement, selectElement);
-
-        // Get the newly inserted element from the DOM
-        const freshSelectElement = document.getElementById('stylistSelect');
-        
-        freshSelectElement.addEventListener('change', (e) => {
-            if (e.target.value) {
-                const selectedOption = e.target.options[e.target.selectedIndex];
-                this.selectStylist(e.target.value, selectedOption);
-            }
         });
     }
 
@@ -492,20 +458,51 @@ class CustomerBooking {
     }
 
     setupEventListeners() {
+        // Service selection
+        const serviceSelect = document.getElementById('serviceSelect');
+        if (serviceSelect) {
+            serviceSelect.addEventListener('change', (e) => {
+                if (e.target.value) {
+                    const selectedOption = e.target.options[e.target.selectedIndex];
+                    this.selectService(e.target.value, selectedOption);
+                }
+            });
+        }
+
+        // Stylist selection
+        const stylistSelect = document.getElementById('stylistSelect');
+        if (stylistSelect) {
+            stylistSelect.addEventListener('change', (e) => {
+                if (e.target.value) {
+                    const selectedOption = e.target.options[e.target.selectedIndex];
+                    this.selectStylist(e.target.value, selectedOption);
+                }
+            });
+        }
+
         // Navigation buttons
         const nextToStylistBtn = document.getElementById('nextToStylist');
         if (nextToStylistBtn) {
-            nextToStylistBtn.addEventListener('click', () => this.nextStep('stylistStep'));
+            nextToStylistBtn.addEventListener('click', () => {
+                console.log('Next to Stylist clicked');
+                this.nextStep('stylistStep');
+            });
         }
 
         const nextToDateBtn = document.getElementById('nextToDate');
         if (nextToDateBtn) {
-            nextToDateBtn.addEventListener('click', () => this.nextStep('dateStep'));
+            nextToDateBtn.addEventListener('click', () => {
+                console.log('Next to Date clicked');
+                this.nextStep('dateStep');
+            });
         }
 
         const nextToInfoBtn = document.getElementById('nextToInfo');
         if (nextToInfoBtn) {
-            nextToInfoBtn.addEventListener('click', () => this.nextStep('customerInfoStep'));
+            nextToInfoBtn.addEventListener('click', () => {
+                console.log('Next to Info clicked');
+                this.nextStep('customerInfoStep');
+            });
         }
 
         // Back buttons
