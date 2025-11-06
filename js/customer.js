@@ -366,6 +366,8 @@ class CustomerBooking {
                 specialRequests: customerData.specialRequests || ''
             };
 
+            console.log('Booking data:', bookingData);
+
             const response = await fetch('/api/customer/book-appointment', {
                 method: 'POST',
                 headers: {
@@ -375,16 +377,18 @@ class CustomerBooking {
             });
 
             const data = await response.json();
+            console.log('Booking response:', data);
 
             if (data.success) {
                 // Show confirmation
                 this.showConfirmation(data.appointment);
             } else {
                 alert(data.error || 'Failed to book appointment');
+                console.error('Booking error:', data);
             }
         } catch (error) {
             console.error('Error booking appointment:', error);
-            alert('Failed to book appointment. Please try again.');
+            alert('Failed to book appointment. Please try again. Error: ' + error.message);
         } finally {
             const loadingOverlay = document.getElementById('loadingOverlay');
             if (loadingOverlay) loadingOverlay.style.display = 'none';

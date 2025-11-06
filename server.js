@@ -836,6 +836,17 @@ app.post('/api/customer/book-appointment', async (req, res) => {
   try {
     const { businessId, customerName, customerPhone, serviceId, stylistId, appointmentDate, appointmentTime, specialRequests } = req.body;
 
+    // Get service details to get duration
+    const { data: service, error: serviceError } = await supabase
+      .from('services')
+      .select('duration')
+      .eq('id', serviceId)
+      .single();
+
+    if (serviceError || !service) {
+      return res.status(400).json({ error: 'Service not found' });
+    }
+
     // Check if customer exists, if not create one
     let customerId = uuidv4();
     const { data: existingCustomer } = await supabase
@@ -870,6 +881,7 @@ app.post('/api/customer/book-appointment', async (req, res) => {
         stylist_id: stylistId,
         appointment_date: appointmentDate,
         appointment_time: appointmentTime,
+        duration: service.duration,
         special_requests: specialRequests,
         status: 'pending'
       }])
@@ -887,7 +899,7 @@ app.post('/api/customer/book-appointment', async (req, res) => {
 
   } catch (error) {
     console.error('Book appointment error:', error);
-    res.status(500).json({ error: 'Failed to book appointment' });
+    res.status(500).json({ error: 'Failed to book appointment', details: error.message });
   }
 });
 
