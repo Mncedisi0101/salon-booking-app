@@ -11,6 +11,171 @@ class MainApp {
         this.setupSmoothScrolling();
         this.checkAuthStatus();
         this.setupCustomerAuthModal();
+        this.setupCustomerAuthPage();
+    }
+
+    // Setup Customer Auth Page functionality (for customerauth.html)
+    setupCustomerAuthPage() {
+        // Only run on customerauth.html page
+        if (!window.location.pathname.includes('customerauth')) {
+            return;
+        }
+
+        // Get business ID from URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const businessId = urlParams.get('business');
+
+        // Tab switching functionality
+        const loginTab = document.getElementById('loginTab');
+        const signupTab = document.getElementById('signupTab');
+        const loginForm = document.getElementById('loginForm');
+        const signupForm = document.getElementById('signupForm');
+        const switchToSignup = document.getElementById('switchToSignup');
+        const switchToLogin = document.getElementById('switchToLogin');
+
+        if (!loginTab || !signupTab) return;
+
+        // Switch to login tab
+        const showLogin = () => {
+            loginTab.classList.add('active');
+            signupTab.classList.remove('active');
+            loginForm.style.display = 'block';
+            signupForm.style.display = 'none';
+        };
+
+        // Switch to signup tab
+        const showSignup = () => {
+            signupTab.classList.add('active');
+            loginTab.classList.remove('active');
+            signupForm.style.display = 'block';
+            loginForm.style.display = 'none';
+        };
+
+        // Event listeners for tab switching
+        loginTab.addEventListener('click', showLogin);
+        signupTab.addEventListener('click', showSignup);
+        if (switchToSignup) {
+            switchToSignup.addEventListener('click', (e) => {
+                e.preventDefault();
+                showSignup();
+            });
+        }
+        if (switchToLogin) {
+            switchToLogin.addEventListener('click', (e) => {
+                e.preventDefault();
+                showLogin();
+            });
+        }
+
+        // Password toggle functionality
+        const setupPasswordToggle = (passwordFieldId, toggleButtonId) => {
+            const passwordField = document.getElementById(passwordFieldId);
+            const toggleButton = document.getElementById(toggleButtonId);
+
+            if (!passwordField || !toggleButton) return;
+
+            toggleButton.addEventListener('click', function() {
+                const type = passwordField.getAttribute('type') === 'password' ? 'text' : 'password';
+                passwordField.setAttribute('type', type);
+
+                // Toggle eye icon
+                const icon = this.querySelector('i');
+                if (type === 'password') {
+                    icon.classList.remove('fa-eye-slash');
+                    icon.classList.add('fa-eye');
+                } else {
+                    icon.classList.remove('fa-eye');
+                    icon.classList.add('fa-eye-slash');
+                }
+            });
+        };
+
+        // Setup password toggles
+        setupPasswordToggle('loginPassword', 'toggleLoginPassword');
+        setupPasswordToggle('signupPassword', 'toggleSignupPassword');
+        setupPasswordToggle('confirmPassword', 'toggleConfirmPassword');
+
+        // Form submission handlers
+        const loginFormElement = document.getElementById('loginFormElement');
+        if (loginFormElement) {
+            loginFormElement.addEventListener('submit', async (e) => {
+                e.preventDefault();
+
+                const email = document.getElementById('loginEmail').value;
+                const password = document.getElementById('loginPassword').value;
+
+                // Show loading overlay
+                const loadingOverlay = document.getElementById('loadingOverlay');
+                if (loadingOverlay) loadingOverlay.style.display = 'flex';
+
+                try {
+                    const success = await authManager.customerLogin(email, password);
+
+                    if (success) {
+                        // Redirect to booking page after successful login
+                        window.location.href = businessId ? `customer.html?business=${businessId}` : 'customer.html';
+                    }
+                } catch (error) {
+                    console.error('Login error:', error);
+                    alert('Login failed. Please try again.');
+                } finally {
+                    if (loadingOverlay) loadingOverlay.style.display = 'none';
+                }
+            });
+        }
+
+        const signupFormElement = document.getElementById('signupFormElement');
+        if (signupFormElement) {
+            signupFormElement.addEventListener('submit', async (e) => {
+                e.preventDefault();
+
+                // Get form values
+                const firstName = document.getElementById('signupFirstName').value;
+                const lastName = document.getElementById('signupLastName').value;
+                const email = document.getElementById('signupEmail').value;
+                const phone = document.getElementById('signupPhone').value;
+                const password = document.getElementById('signupPassword').value;
+                const confirmPassword = document.getElementById('confirmPassword').value;
+
+                // Validate password match
+                if (password !== confirmPassword) {
+                    alert('Passwords do not match!');
+                    return;
+                }
+
+                // Show loading overlay
+                const loadingOverlay = document.getElementById('loadingOverlay');
+                if (loadingOverlay) loadingOverlay.style.display = 'flex';
+
+                try {
+                    const customerData = {
+                        name: `${firstName} ${lastName}`,
+                        email: email,
+                        phone: phone,
+                        password: password
+                    };
+
+                    const success = await authManager.customerRegister(customerData);
+
+                    if (success) {
+                        // Redirect to booking page after successful signup
+                        window.location.href = businessId ? `customer.html?business=${businessId}` : 'customer.html';
+                    }
+                } catch (error) {
+                    console.error('Registration error:', error);
+                    alert('Registration failed. Please try again.');
+                } finally {
+                    if (loadingOverlay) loadingOverlay.style.display = 'none';
+                }
+            });
+        }
+
+        // Social login buttons (placeholder functionality)
+        document.querySelectorAll('.social-btn').forEach(button => {
+            button.addEventListener('click', () => {
+                alert('Social login coming soon!');
+            });
+        });
     }
 
     setupModalHandlers() {

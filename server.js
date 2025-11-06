@@ -72,6 +72,10 @@ app.get('/customer', (req, res) => {
   res.sendFile(__dirname + '/views/customer.html');
 });
 
+app.get('/customerauth', (req, res) => {
+  res.sendFile(__dirname + '/views/customerauth.html');
+});
+
 app.get('/admin', (req, res) => {
   res.sendFile(__dirname + '/views/admin.html');
 });
@@ -117,7 +121,7 @@ app.post('/api/business/register', async (req, res) => {
         phone: phone,
         email: email,
         password: hashedPassword,
-        qr_code_data: `${req.protocol}://${req.get('host')}/customer?business=${businessId}`
+        qr_code_data: `${req.protocol}://${req.get('host')}/customerauth?business=${businessId}`
       }])
       .select()
       .single();
@@ -1002,7 +1006,7 @@ app.get('/api/admin/appointments', authenticateToken, requireAdminAuth, async (r
 app.get('/api/qr-code/:businessId', async (req, res) => {
   try {
     const businessId = req.params.businessId;
-    const qrUrl = `${req.protocol}://${req.get('host')}/customer?business=${businessId}`;
+    const qrUrl = `${req.protocol}://${req.get('host')}/customerauth?business=${businessId}`;
     
     const qrSvg = qr.image(qrUrl, { type: 'svg' });
     res.setHeader('Content-type', 'image/svg+xml');

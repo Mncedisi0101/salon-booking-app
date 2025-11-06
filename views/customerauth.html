@@ -286,6 +286,11 @@
                                     <input type="email" class="form-control" id="signupEmail" name="email" required>
                                 </div>
                                 
+                                <div class="mb-3">
+                                    <label for="signupPhone" class="form-label">Phone Number</label>
+                                    <input type="tel" class="form-control" id="signupPhone" name="phone" required>
+                                </div>
+                                
                                 <div class="mb-3 password-container">
                                     <label for="signupPassword" class="form-label">Password</label>
                                     <input type="password" class="form-control" id="signupPassword" name="password" required>
@@ -360,128 +365,7 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            // Tab switching functionality
-            const loginTab = document.getElementById('loginTab');
-            const signupTab = document.getElementById('signupTab');
-            const loginForm = document.getElementById('loginForm');
-            const signupForm = document.getElementById('signupForm');
-            const switchToSignup = document.getElementById('switchToSignup');
-            const switchToLogin = document.getElementById('switchToLogin');
-            
-            // Switch to login tab
-            function showLogin() {
-                loginTab.classList.add('active');
-                signupTab.classList.remove('active');
-                loginForm.style.display = 'block';
-                signupForm.style.display = 'none';
-            }
-            
-            // Switch to signup tab
-            function showSignup() {
-                signupTab.classList.add('active');
-                loginTab.classList.remove('active');
-                signupForm.style.display = 'block';
-                loginForm.style.display = 'none';
-            }
-            
-            // Event listeners for tab switching
-            loginTab.addEventListener('click', showLogin);
-            signupTab.addEventListener('click', showSignup);
-            switchToSignup.addEventListener('click', function(e) {
-                e.preventDefault();
-                showSignup();
-            });
-            switchToLogin.addEventListener('click', function(e) {
-                e.preventDefault();
-                showLogin();
-            });
-            
-            // Password toggle functionality
-            function setupPasswordToggle(passwordFieldId, toggleButtonId) {
-                const passwordField = document.getElementById(passwordFieldId);
-                const toggleButton = document.getElementById(toggleButtonId);
-                
-                toggleButton.addEventListener('click', function() {
-                    const type = passwordField.getAttribute('type') === 'password' ? 'text' : 'password';
-                    passwordField.setAttribute('type', type);
-                    
-                    // Toggle eye icon
-                    const icon = this.querySelector('i');
-                    if (type === 'password') {
-                        icon.classList.remove('fa-eye-slash');
-                        icon.classList.add('fa-eye');
-                    } else {
-                        icon.classList.remove('fa-eye');
-                        icon.classList.add('fa-eye-slash');
-                    }
-                });
-            }
-            
-            // Setup password toggles
-            setupPasswordToggle('loginPassword', 'toggleLoginPassword');
-            setupPasswordToggle('signupPassword', 'toggleSignupPassword');
-            setupPasswordToggle('confirmPassword', 'toggleConfirmPassword');
-            
-            // Form submission handlers
-            document.getElementById('loginFormElement').addEventListener('submit', function(e) {
-                e.preventDefault();
-                // Show loading overlay
-                document.getElementById('loadingOverlay').style.display = 'flex';
-                
-                // Simulate API call
-                setTimeout(function() {
-                    // Hide loading overlay
-                    document.getElementById('loadingOverlay').style.display = 'none';
-                    
-                    // Redirect to booking page after successful login
-                    window.location.href = 'customer.html';
-                }, 1500);
-            });
-            
-            document.getElementById('signupFormElement').addEventListener('submit', function(e) {
-                e.preventDefault();
-                
-                // Validate password match
-                const password = document.getElementById('signupPassword').value;
-                const confirmPassword = document.getElementById('confirmPassword').value;
-                
-                if (password !== confirmPassword) {
-                    alert('Passwords do not match!');
-                    return;
-                }
-                
-                // Show loading overlay
-                document.getElementById('loadingOverlay').style.display = 'flex';
-                
-                // Simulate API call
-                setTimeout(function() {
-                    // Hide loading overlay
-                    document.getElementById('loadingOverlay').style.display = 'none';
-                    
-                    // Redirect to booking page after successful signup
-                    window.location.href = 'customer.html';
-                }, 1500);
-            });
-            
-            // Social login buttons
-            document.querySelectorAll('.social-btn').forEach(button => {
-                button.addEventListener('click', function() {
-                    // Show loading overlay
-                    document.getElementById('loadingOverlay').style.display = 'flex';
-                    
-                    // Simulate social login
-                    setTimeout(function() {
-                        // Hide loading overlay
-                        document.getElementById('loadingOverlay').style.display = 'none';
-                        
-                        // Redirect to booking page
-                        window.location.href = 'customer.html';
-                    }, 1500);
-                });
-            });
-        });
-    </script>
+    <script src="/js/auth.js"></script>
+    <script src="/js/main.js"></script>
 </body>
 </html>
