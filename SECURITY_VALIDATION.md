@@ -78,13 +78,17 @@ Implemented rate limiting to prevent abuse:
 - Required: name, price, duration
 - Service name length: 2-100 characters
 - Price: 0-100,000 (numeric)
-- Duration: 1-1440 minutes (numeric)
+- Duration: 1-1,440 minutes (numeric)
+- **Duration whitelist validation**: Must be one of: 15, 30, 45, 60, 90, 120, or 180 minutes
+- **Category validation**: Whitelist validation for service categories (haircut, coloring, styling, treatment, nails, spa, makeup, waxing, other)
 - Sanitizes name, description, category
 - Authenticated & authorized
 
 #### `/api/business/services/:id` (PUT)
 **Validations:**
 - Same as POST service validation
+- **Duration whitelist validation**: Must be one of: 15, 30, 45, 60, 90, 120, or 180 minutes
+- **Category validation**: Whitelist validation for service categories
 - Ensures business ownership
 - Authenticated & authorized
 
@@ -114,6 +118,12 @@ Implemented rate limiting to prevent abuse:
 - Phone format validation
 - Date format validation
 - Time format validation (HH:MM)
+- **Business existence validation**: Verifies businessId exists in database
+- **Service validation**: Checks serviceId exists, belongs to the business, and is available
+- **Stylist validation**: Checks stylistId exists, belongs to the business, and is active
+- **Date validation**: Prevents booking appointments in the past
+- **Business hours validation**: Ensures appointment is during business hours and business is open on that day
+- **Time slot conflict validation**: Checks for overlapping appointments with the same stylist
 - Sanitizes customerName, customerPhone, specialRequests
 - Rate limited: 3 attempts per 5 minutes
 
@@ -152,11 +162,14 @@ Implemented rate limiting to prevent abuse:
 3. **Length Constraints**: String lengths are enforced to prevent buffer issues
 4. **Format Validation**: Email, phone, date, and time formats are validated using regex
 5. **Rate Limiting**: Prevents brute force and DoS attacks
-6. **Whitelist Validation**: Status values use whitelist validation (not blacklist)
+6. **Whitelist Validation**: Status values and categories use whitelist validation (not blacklist)
 7. **Authentication Required**: All business/admin routes require valid JWT tokens
 8. **Authorization Checks**: Business routes verify ownership via businessId
 9. **Error Messages**: Generic error messages to prevent information leakage
 10. **Lowercase Normalization**: Emails are normalized to lowercase
+11. **Database Reference Validation**: All foreign keys (businessId, serviceId, stylistId) are validated to exist in database
+12. **Business Logic Validation**: Checks for conflicts, availability, business hours, and past dates
+13. **Cross-Reference Validation**: Ensures related entities belong to the same business (e.g., stylist belongs to business)
 
 ## Error Response Format
 
@@ -186,6 +199,13 @@ HTTP Status Codes:
 8. Test with invalid date/time formats
 9. Test authorization by attempting cross-business operations
 10. Test with invalid status values
+11. **Test with non-existent IDs**: Try booking with fake serviceId, stylistId, or businessId
+12. **Test with mismatched business IDs**: Try to book a service from Business A with a stylist from Business B
+13. **Test with inactive/unavailable resources**: Try booking with inactive stylists or unavailable services
+14. **Test with past dates**: Try to book appointments in the past
+15. **Test with conflicting time slots**: Try double-booking the same stylist at the same time
+16. **Test with out-of-hours bookings**: Try booking outside business hours or on closed days
+17. **Test with invalid categories**: Try adding services with invalid category names
 
 ## Future Enhancements
 

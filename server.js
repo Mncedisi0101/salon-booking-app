@@ -661,6 +661,14 @@ app.post('/api/business/services', authenticateToken, requireBusinessAuth, async
       return res.status(400).json({ error: lengthError });
     }
 
+    // Category validation (whitelist)
+    if (sanitizedCategory) {
+      const validCategories = ['haircut', 'coloring', 'styling', 'treatment', 'nails', 'spa', 'makeup', 'waxing', 'other'];
+      if (!validCategories.includes(sanitizedCategory.toLowerCase())) {
+        return res.status(400).json({ error: 'Invalid service category' });
+      }
+    }
+
     // Number validation
     const priceError = validateNumber(price, 'Price', 0, 100000);
     if (priceError) {
@@ -670,6 +678,13 @@ app.post('/api/business/services', authenticateToken, requireBusinessAuth, async
     const durationError = validateNumber(duration, 'Duration', 1, 1440);
     if (durationError) {
       return res.status(400).json({ error: durationError });
+    }
+
+    // Validate duration is one of the allowed values
+    const validDurations = [15, 30, 45, 60, 90, 120, 180];
+    const durationNum = parseInt(duration);
+    if (!validDurations.includes(durationNum)) {
+      return res.status(400).json({ error: 'Invalid duration value.' });
     }
 
     const { data: service, error } = await supabase
@@ -725,6 +740,14 @@ app.put('/api/business/services/:id', authenticateToken, requireBusinessAuth, as
       return res.status(400).json({ error: lengthError });
     }
 
+    // Category validation (whitelist)
+    if (sanitizedCategory) {
+      const validCategories = ['haircut', 'coloring', 'styling', 'treatment', 'nails', 'spa', 'makeup', 'waxing', 'other'];
+      if (!validCategories.includes(sanitizedCategory.toLowerCase())) {
+        return res.status(400).json({ error: 'Invalid service category' });
+      }
+    }
+
     // Number validation
     const priceError = validateNumber(price, 'Price', 0, 100000);
     if (priceError) {
@@ -734,6 +757,13 @@ app.put('/api/business/services/:id', authenticateToken, requireBusinessAuth, as
     const durationError = validateNumber(duration, 'Duration', 1, 1440);
     if (durationError) {
       return res.status(400).json({ error: durationError });
+    }
+
+    // Validate duration is one of the allowed values
+    const validDurations = [15, 30, 45, 60, 90, 120, 180];
+    const durationNum = parseInt(duration);
+    if (!validDurations.includes(durationNum)) {
+      return res.status(400).json({ error: 'Invalid duration value.' });
     }
 
     const { data: service, error } = await supabase
@@ -1276,15 +1306,106 @@ app.post('/api/customer/book-appointment', async (req, res) => {
       return res.status(400).json({ error: 'Invalid appointment time format' });
     }
 
-    // Get service details to get duration
+    // Validate that business exists
+    const { data: business, error: businessError } = await supabase
+      .from('businesses')
+      .select('id, business_name')
+      .eq('id', businessId)
+      .single();
+
+    if (businessError || !business) {
+      return res.status(400).json({ error: 'Business not found or invalid' });
+    }
+
+    // Validate that service exists and belongs to this business
     const { data: service, error: serviceError } = await supabase
       .from('services')
-      .select('duration')
+      .select('duration, business_id, is_available')
       .eq('id', serviceId)
+      .eq('business_id', businessId)
       .single();
 
     if (serviceError || !service) {
-      return res.status(400).json({ error: 'Service not found' });
+      return res.status(400).json({ error: 'Service not found or not available for this business' });
+    }
+
+    if (!service.is_available) {
+      return res.status(400).json({ error: 'Selected service is currently unavailable' });
+    }
+
+    // Validate that stylist exists and belongs to this business
+    const { data: stylist, error: stylistError } = await supabase
+      .from('stylists')
+      .select('id, name, business_id, is_active')
+      .eq('id', stylistId)
+      .eq('business_id', businessId)
+      .single();
+
+    if (stylistError || !stylist) {
+      return res.status(400).json({ error: 'Stylist not found or not available for this business' });
+    }
+
+    if (!stylist.is_active) {
+      return res.status(400).json({ error: 'Selected stylist is currently unavailable' });
+    }
+
+    // Validate that the appointment date is not in the past
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    if (appointmentDateObj < today) {
+      return res.status(400).json({ error: 'Cannot book appointments in the past' });
+    }
+
+    // Validate business hours for the selected day
+    const dayOfWeek = appointmentDateObj.getDay();
+    const { data: businessHours, error: hoursError } = await supabase
+      .from('business_hours')
+      .select('open_time, close_time, is_closed')
+      .eq('business_id', businessId)
+      .eq('day', dayOfWeek)
+      .single();
+
+    if (hoursError || !businessHours) {
+      return res.status(400).json({ error: 'Business hours not configured' });
+    }
+
+    if (businessHours.is_closed) {
+      return res.status(400).json({ error: 'Business is closed on the selected day' });
+    }
+
+    // Validate that appointment time is within business hours
+    if (appointmentTime < businessHours.open_time || appointmentTime >= businessHours.close_time) {
+      return res.status(400).json({ error: 'Appointment time is outside business hours' });
+    }
+
+    // Check for conflicting appointments for this stylist
+    const { data: conflictingAppointments, error: conflictError } = await supabase
+      .from('appointments')
+      .select('id, appointment_time, duration')
+      .eq('business_id', businessId)
+      .eq('stylist_id', stylistId)
+      .eq('appointment_date', appointmentDate)
+      .in('status', ['pending', 'confirmed']);
+
+    if (!conflictError && conflictingAppointments && conflictingAppointments.length > 0) {
+      // Check for time slot conflicts
+      const requestedStartTime = appointmentTime;
+      const [hours, minutes] = appointmentTime.split(':').map(Number);
+      const requestedEndMinutes = hours * 60 + minutes + service.duration;
+      const requestedEndTime = `${Math.floor(requestedEndMinutes / 60).toString().padStart(2, '0')}:${(requestedEndMinutes % 60).toString().padStart(2, '0')}`;
+
+      for (const apt of conflictingAppointments) {
+        const [aptHours, aptMinutes] = apt.appointment_time.split(':').map(Number);
+        const aptStartMinutes = aptHours * 60 + aptMinutes;
+        const aptEndMinutes = aptStartMinutes + (apt.duration || 30);
+
+        const requestedStartMinutes = hours * 60 + minutes;
+        
+        // Check if times overlap
+        if (requestedStartMinutes < aptEndMinutes && requestedEndMinutes > aptStartMinutes) {
+          return res.status(400).json({ error: 'This time slot is already booked' });
+        }
+      }
     }
 
     // Check if customer exists, if not create one
@@ -1322,7 +1443,7 @@ app.post('/api/customer/book-appointment', async (req, res) => {
         appointment_date: appointmentDate,
         appointment_time: appointmentTime,
         duration: service.duration,
-        special_requests: specialRequests,
+        special_requests: sanitizedSpecialRequests,
         status: 'pending'
       }])
       .select(`
