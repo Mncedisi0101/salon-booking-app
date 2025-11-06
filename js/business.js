@@ -768,9 +768,33 @@ class BusinessDashboard {
 
         // Header sidebar toggle (if present)
         const sidebarToggle = document.getElementById('sidebarToggle');
-        if (sidebarToggle) {
+        const sidebar = document.querySelector('.sidebar');
+        
+        if (sidebarToggle && sidebar) {
+            // Create overlay for mobile
+            const overlay = document.createElement('div');
+            overlay.className = 'sidebar-overlay';
+            document.body.appendChild(overlay);
+            
             sidebarToggle.addEventListener('click', () => {
-                document.querySelector('.dashboard-container')?.classList.toggle('sidebar-collapsed');
+                sidebar.classList.toggle('active');
+                overlay.classList.toggle('active');
+            });
+            
+            // Close sidebar when clicking overlay
+            overlay.addEventListener('click', () => {
+                sidebar.classList.remove('active');
+                overlay.classList.remove('active');
+            });
+            
+            // Close sidebar when clicking a nav item on mobile
+            document.querySelectorAll('.sidebar .nav-item').forEach(item => {
+                item.addEventListener('click', () => {
+                    if (window.innerWidth <= 768) {
+                        sidebar.classList.remove('active');
+                        overlay.classList.remove('active');
+                    }
+                });
             });
         }
     }

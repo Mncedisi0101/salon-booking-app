@@ -439,5 +439,88 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="/js/auth.js"></script>
     <script src="/js/admin.js"></script>
+    <script>
+        // Mobile responsiveness enhancements
+        document.addEventListener('DOMContentLoaded', function() {
+            // Sidebar toggle functionality for mobile
+            const sidebarToggle = document.getElementById('adminSidebarToggle');
+            const sidebar = document.querySelector('.admin-sidebar');
+            
+            if (sidebarToggle && sidebar) {
+                // Create overlay for mobile
+                const overlay = document.createElement('div');
+                overlay.className = 'admin-sidebar-overlay';
+                document.body.appendChild(overlay);
+                
+                sidebarToggle.addEventListener('click', () => {
+                    sidebar.classList.toggle('active');
+                    overlay.classList.toggle('active');
+                });
+                
+                // Close sidebar when clicking overlay
+                overlay.addEventListener('click', () => {
+                    sidebar.classList.remove('active');
+                    overlay.classList.remove('active');
+                });
+                
+                // Close sidebar when clicking a nav item on mobile
+                document.querySelectorAll('.admin-sidebar .admin-nav-item').forEach(item => {
+                    item.addEventListener('click', () => {
+                        if (window.innerWidth <= 768) {
+                            sidebar.classList.remove('active');
+                            overlay.classList.remove('active');
+                        }
+                    });
+                });
+            }
+            
+            // Add data-label attributes to table cells for mobile responsiveness
+            function addMobileTableLabels() {
+                const tables = document.querySelectorAll('.table, .admin-table');
+                tables.forEach(table => {
+                    const headers = Array.from(table.querySelectorAll('thead th')).map(th => th.textContent.trim());
+                    const rows = table.querySelectorAll('tbody tr');
+                    
+                    rows.forEach(row => {
+                        const cells = row.querySelectorAll('td');
+                        cells.forEach((cell, index) => {
+                            if (headers[index]) {
+                                cell.setAttribute('data-label', headers[index]);
+                            }
+                        });
+                    });
+                });
+            }
+            
+            // Run on page load
+            addMobileTableLabels();
+            
+            // Run whenever tables are updated (using MutationObserver)
+            const observer = new MutationObserver(function(mutations) {
+                mutations.forEach(function(mutation) {
+                    if (mutation.addedNodes.length > 0) {
+                        addMobileTableLabels();
+                    }
+                });
+            });
+            
+            const tableContainers = document.querySelectorAll('.table-responsive');
+            tableContainers.forEach(container => {
+                observer.observe(container, { childList: true, subtree: true });
+            });
+            
+            // Handle window resize to close sidebar on desktop
+            let resizeTimer;
+            window.addEventListener('resize', () => {
+                clearTimeout(resizeTimer);
+                resizeTimer = setTimeout(() => {
+                    if (window.innerWidth > 768) {
+                        sidebar?.classList.remove('active');
+                        document.querySelector('.admin-sidebar-overlay')?.classList.remove('active');
+                    }
+                }, 250);
+            });
+        });
+    </script>
 </body>
 </html>

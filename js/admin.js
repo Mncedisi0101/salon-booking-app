@@ -613,5 +613,8 @@ class AdminDashboard {
 
 // Initialize admin dashboard when page loads
 document.addEventListener('DOMContentLoaded', () => {
-    new AdminDashboard();
+    const adminDashboard = new AdminDashboard();
+    // Expose globally for inline onclick handlers
+    window.adminDashboard = adminDashboard;
+    window.showSection = (id) => adminDashboard.showSection(id);
 });

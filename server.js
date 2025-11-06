@@ -19,9 +19,80 @@ const supabase = createClient(
 // JWT Secret
 const JWT_SECRET = process.env.JWT_SECRET || 'your-jwt-secret-key';
 
+// Validation helper functions
+const validateEmail = (email) => {
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  return emailRegex.test(email);
+};
+
+const validatePhone = (phone) => {
+  const phoneRegex = /^[\d\s\-\+\(\)]{10,}$/;
+  return phoneRegex.test(phone);
+};
+
+const validatePassword = (password) => {
+  // Minimum 8 characters, at least one letter and one number
+  return password && password.length >= 8;
+};
+
+const sanitizeString = (str) => {
+  if (typeof str !== 'string') return '';
+  // Remove HTML tags and trim
+  return str.replace(/<[^>]*>/g, '').trim();
+};
+
+const validateRequired = (value, fieldName) => {
+  if (!value || (typeof value === 'string' && value.trim() === '')) {
+    return `${fieldName} is required`;
+  }
+  return null;
+};
+
+const validateLength = (value, fieldName, min, max) => {
+  if (value && value.length < min) {
+    return `${fieldName} must be at least ${min} characters`;
+  }
+  if (value && max && value.length > max) {
+    return `${fieldName} must not exceed ${max} characters`;
+  }
+  return null;
+};
+
+const validateNumber = (value, fieldName, min, max) => {
+  const num = parseFloat(value);
+  if (isNaN(num)) {
+    return `${fieldName} must be a valid number`;
+  }
+  if (min !== undefined && num < min) {
+    return `${fieldName} must be at least ${min}`;
+  }
+  if (max !== undefined && num > max) {
+    return `${fieldName} must not exceed ${max}`;
+  }
+  return null;
+};
+
+// Rate limiting helper
+const rateLimitMap = new Map();
+const checkRateLimit = (identifier, maxRequests = 5, windowMs = 60000) => {
+  const now = Date.now();
+  const userRequests = rateLimitMap.get(identifier) || [];
+  
+  // Filter out old requests outside the time window
+  const recentRequests = userRequests.filter(time => now - time < windowMs);
+  
+  if (recentRequests.length >= maxRequests) {
+    return false;
+  }
+  
+  recentRequests.push(now);
+  rateLimitMap.set(identifier, recentRequests);
+  return true;
+};
+
 // Middleware
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json({ limit: '10mb' })); // Limit payload size
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(express.static(path.join(__dirname)));
 app.use('/styles', express.static(path.join(__dirname, 'styles')));
 app.use('/js', express.static(path.join(__dirname, 'js')));
@@ -94,13 +165,64 @@ app.get('/api/health', async (req, res) => {
 // Business Registration
 app.post('/api/business/register', async (req, res) => {
   try {
+    // Rate limiting
+    const clientIp = req.ip || req.connection.remoteAddress;
+    if (!checkRateLimit(`register_${clientIp}`, 3, 300000)) {
+      return res.status(429).json({ error: 'Too many registration attempts. Please try again later.' });
+    }
+
     const { ownerName, businessName, phone, email, password } = req.body;
+    
+    // Validation
+    const errors = [];
+    
+    // Required field validation
+    errors.push(validateRequired(ownerName, 'Owner name'));
+    errors.push(validateRequired(businessName, 'Business name'));
+    errors.push(validateRequired(phone, 'Phone number'));
+    errors.push(validateRequired(email, 'Email'));
+    errors.push(validateRequired(password, 'Password'));
+    
+    // Filter out null errors
+    const validationErrors = errors.filter(e => e !== null);
+    if (validationErrors.length > 0) {
+      return res.status(400).json({ error: validationErrors[0] });
+    }
+    
+    // Sanitize inputs
+    const sanitizedOwnerName = sanitizeString(ownerName);
+    const sanitizedBusinessName = sanitizeString(businessName);
+    const sanitizedPhone = sanitizeString(phone);
+    const sanitizedEmail = sanitizeString(email).toLowerCase();
+    
+    // Length validation
+    const lengthError = validateLength(sanitizedOwnerName, 'Owner name', 2, 100) ||
+                       validateLength(sanitizedBusinessName, 'Business name', 2, 100) ||
+                       validateLength(password, 'Password', 8, 100);
+    if (lengthError) {
+      return res.status(400).json({ error: lengthError });
+    }
+    
+    // Email validation
+    if (!validateEmail(sanitizedEmail)) {
+      return res.status(400).json({ error: 'Invalid email format' });
+    }
+    
+    // Phone validation
+    if (!validatePhone(sanitizedPhone)) {
+      return res.status(400).json({ error: 'Invalid phone number format' });
+    }
+    
+    // Password validation
+    if (!validatePassword(password)) {
+      return res.status(400).json({ error: 'Password must be at least 8 characters' });
+    }
     
     // Check if business already exists
     const { data: existingBusiness } = await supabase
       .from('businesses')
       .select('*')
-      .eq('email', email)
+      .eq('email', sanitizedEmail)
       .single();
 
     if (existingBusiness) {
@@ -116,10 +238,10 @@ app.post('/api/business/register', async (req, res) => {
       .from('businesses')
       .insert([{
         id: businessId,
-        owner_name: ownerName,
-        business_name: businessName,
-        phone: phone,
-        email: email,
+        owner_name: sanitizedOwnerName,
+        business_name: sanitizedBusinessName,
+        phone: sanitizedPhone,
+        email: sanitizedEmail,
         password: hashedPassword,
         qr_code_data: `${req.protocol}://${req.get('host')}/customerauth?business=${businessId}`
       }])
@@ -144,10 +266,10 @@ app.post('/api/business/register', async (req, res) => {
     // Create insurance lead
     await supabase.from('insurance_leads').insert([{
       business_id: businessId,
-      business_name: businessName,
-      owner_name: ownerName,
-      contact_email: email,
-      contact_phone: phone,
+      business_name: sanitizedBusinessName,
+      owner_name: sanitizedOwnerName,
+      contact_email: sanitizedEmail,
+      contact_phone: sanitizedPhone,
       status: 'new'
     }]);
 
@@ -166,21 +288,38 @@ app.post('/api/business/register', async (req, res) => {
 // Business Login
 app.post('/api/business/login', async (req, res) => {
   try {
+    // Rate limiting
+    const clientIp = req.ip || req.connection.remoteAddress;
+    if (!checkRateLimit(`login_${clientIp}`, 5, 300000)) {
+      return res.status(429).json({ error: 'Too many login attempts. Please try again later.' });
+    }
+
     const { email, password } = req.body;
+
+    // Validation
+    if (!email || !password) {
+      return res.status(400).json({ error: 'Email and password are required' });
+    }
+
+    const sanitizedEmail = sanitizeString(email).toLowerCase();
+
+    if (!validateEmail(sanitizedEmail)) {
+      return res.status(400).json({ error: 'Invalid email format' });
+    }
 
     const { data: business, error } = await supabase
       .from('businesses')
       .select('*')
-      .eq('email', email)
+      .eq('email', sanitizedEmail)
       .single();
 
     if (error || !business) {
-      return res.status(400).json({ error: 'Invalid credentials' });
+      return res.status(401).json({ error: 'Invalid email or password' });
     }
 
     const validPassword = await bcrypt.compare(password, business.password);
     if (!validPassword) {
-      return res.status(400).json({ error: 'Invalid credentials' });
+      return res.status(401).json({ error: 'Invalid email or password' });
     }
 
     const token = jwt.sign(
@@ -215,24 +354,39 @@ app.post('/api/business/login', async (req, res) => {
 // Admin Login - Plain text validation
 app.post('/api/admin/login', async (req, res) => {
   try {
+    // Rate limiting
+    const clientIp = req.ip || req.connection.remoteAddress;
+    if (!checkRateLimit(`admin_login_${clientIp}`, 3, 300000)) {
+      return res.status(429).json({ error: 'Too many login attempts. Please try again later.' });
+    }
+
     const { email, password } = req.body;
+
+    // Validation
+    if (!email || !password) {
+      return res.status(400).json({ error: 'Email and password are required' });
+    }
+
+    const sanitizedEmail = sanitizeString(email).toLowerCase();
+
+    if (!validateEmail(sanitizedEmail)) {
+      return res.status(400).json({ error: 'Invalid email format' });
+    }
 
     // Fetch admin from database
     const { data: admin, error } = await supabase
       .from('admins')
       .select('*')
-      .eq('email', email)
+      .eq('email', sanitizedEmail)
       .eq('is_active', true)
       .single();
 
     if (error || !admin) {
-      console.log('Admin not found:', email);
       return res.status(400).json({ error: 'Invalid credentials' });
     }
 
     // Validate password as plain text (exact match)
     if (password !== admin.password) {
-      console.log('Password mismatch for admin:', email);
       return res.status(400).json({ error: 'Invalid credentials' });
     }
 
@@ -269,13 +423,58 @@ app.post('/api/admin/login', async (req, res) => {
 // Customer Registration
 app.post('/api/customer/register', async (req, res) => {
   try {
+    // Rate limiting
+    const clientIp = req.ip || req.connection.remoteAddress;
+    if (!checkRateLimit(`customer_register_${clientIp}`, 3, 300000)) {
+      return res.status(429).json({ error: 'Too many registration attempts. Please try again later.' });
+    }
+
     const { name, email, phone, password } = req.body;
+
+    // Validation
+    const errors = [];
+    errors.push(validateRequired(name, 'Name'));
+    errors.push(validateRequired(email, 'Email'));
+    errors.push(validateRequired(phone, 'Phone number'));
+    errors.push(validateRequired(password, 'Password'));
+    
+    const validationErrors = errors.filter(e => e !== null);
+    if (validationErrors.length > 0) {
+      return res.status(400).json({ error: validationErrors[0] });
+    }
+
+    // Sanitize inputs
+    const sanitizedName = sanitizeString(name);
+    const sanitizedEmail = sanitizeString(email).toLowerCase();
+    const sanitizedPhone = sanitizeString(phone);
+
+    // Length validation
+    const lengthError = validateLength(sanitizedName, 'Name', 2, 100) ||
+                       validateLength(password, 'Password', 8, 100);
+    if (lengthError) {
+      return res.status(400).json({ error: lengthError });
+    }
+
+    // Email validation
+    if (!validateEmail(sanitizedEmail)) {
+      return res.status(400).json({ error: 'Invalid email format' });
+    }
+
+    // Phone validation
+    if (!validatePhone(sanitizedPhone)) {
+      return res.status(400).json({ error: 'Invalid phone number format' });
+    }
+
+    // Password validation
+    if (!validatePassword(password)) {
+      return res.status(400).json({ error: 'Password must be at least 8 characters' });
+    }
 
     // Check if customer already exists
     const { data: existingCustomer } = await supabase
       .from('customers')
       .select('*')
-      .eq('email', email)
+      .eq('email', sanitizedEmail)
       .single();
 
     if (existingCustomer) {
@@ -289,9 +488,9 @@ app.post('/api/customer/register', async (req, res) => {
       .from('customers')
       .insert([{
         id: customerId,
-        name: name,
-        email: email,
-        phone: phone,
+        name: sanitizedName,
+        email: sanitizedEmail,
+        phone: sanitizedPhone,
         password: hashedPassword
       }])
       .select()
@@ -330,12 +529,29 @@ app.post('/api/customer/register', async (req, res) => {
 // Customer Login
 app.post('/api/customer/login', async (req, res) => {
   try {
+    // Rate limiting
+    const clientIp = req.ip || req.connection.remoteAddress;
+    if (!checkRateLimit(`customer_login_${clientIp}`, 5, 300000)) {
+      return res.status(429).json({ error: 'Too many login attempts. Please try again later.' });
+    }
+
     const { email, password } = req.body;
+
+    // Validation
+    if (!email || !password) {
+      return res.status(400).json({ error: 'Email and password are required' });
+    }
+
+    const sanitizedEmail = sanitizeString(email).toLowerCase();
+
+    if (!validateEmail(sanitizedEmail)) {
+      return res.status(400).json({ error: 'Invalid email format' });
+    }
 
     const { data: customer, error } = await supabase
       .from('customers')
       .select('*')
-      .eq('email', email)
+      .eq('email', sanitizedEmail)
       .single();
 
     if (error || !customer) {
@@ -423,15 +639,48 @@ app.post('/api/business/services', authenticateToken, requireBusinessAuth, async
     const businessId = req.user.id;
     const { name, price, duration, description, category } = req.body;
 
+    // Validation
+    const errors = [];
+    errors.push(validateRequired(name, 'Service name'));
+    errors.push(validateRequired(price, 'Price'));
+    errors.push(validateRequired(duration, 'Duration'));
+    
+    const validationErrors = errors.filter(e => e !== null);
+    if (validationErrors.length > 0) {
+      return res.status(400).json({ error: validationErrors[0] });
+    }
+
+    // Sanitize inputs
+    const sanitizedName = sanitizeString(name);
+    const sanitizedDescription = description ? sanitizeString(description) : '';
+    const sanitizedCategory = category ? sanitizeString(category) : '';
+
+    // Length validation
+    const lengthError = validateLength(sanitizedName, 'Service name', 2, 100);
+    if (lengthError) {
+      return res.status(400).json({ error: lengthError });
+    }
+
+    // Number validation
+    const priceError = validateNumber(price, 'Price', 0, 100000);
+    if (priceError) {
+      return res.status(400).json({ error: priceError });
+    }
+
+    const durationError = validateNumber(duration, 'Duration', 1, 1440);
+    if (durationError) {
+      return res.status(400).json({ error: durationError });
+    }
+
     const { data: service, error } = await supabase
       .from('services')
       .insert([{
         business_id: businessId,
-        name,
+        name: sanitizedName,
         price: parseFloat(price),
         duration: parseInt(duration),
-        description,
-        category,
+        description: sanitizedDescription,
+        category: sanitizedCategory,
         is_available: true
       }])
       .select()
@@ -454,14 +703,47 @@ app.put('/api/business/services/:id', authenticateToken, requireBusinessAuth, as
     const serviceId = req.params.id;
     const { name, price, duration, description, category, is_available } = req.body;
 
+    // Validation
+    const errors = [];
+    errors.push(validateRequired(name, 'Service name'));
+    errors.push(validateRequired(price, 'Price'));
+    errors.push(validateRequired(duration, 'Duration'));
+    
+    const validationErrors = errors.filter(e => e !== null);
+    if (validationErrors.length > 0) {
+      return res.status(400).json({ error: validationErrors[0] });
+    }
+
+    // Sanitize inputs
+    const sanitizedName = sanitizeString(name);
+    const sanitizedDescription = description ? sanitizeString(description) : '';
+    const sanitizedCategory = category ? sanitizeString(category) : '';
+
+    // Length validation
+    const lengthError = validateLength(sanitizedName, 'Service name', 2, 100);
+    if (lengthError) {
+      return res.status(400).json({ error: lengthError });
+    }
+
+    // Number validation
+    const priceError = validateNumber(price, 'Price', 0, 100000);
+    if (priceError) {
+      return res.status(400).json({ error: priceError });
+    }
+
+    const durationError = validateNumber(duration, 'Duration', 1, 1440);
+    if (durationError) {
+      return res.status(400).json({ error: durationError });
+    }
+
     const { data: service, error } = await supabase
       .from('services')
       .update({
-        name,
+        name: sanitizedName,
         price: parseFloat(price),
         duration: parseInt(duration),
-        description,
-        category,
+        description: sanitizedDescription,
+        category: sanitizedCategory,
         is_available
       })
       .eq('id', serviceId)
@@ -528,15 +810,48 @@ app.post('/api/business/stylists', authenticateToken, requireBusinessAuth, async
     const businessId = req.user.id;
     const { name, bio, specialties, experience, email, is_active } = req.body;
 
+    // Validation
+    const errors = [];
+    errors.push(validateRequired(name, 'Stylist name'));
+    
+    const validationErrors = errors.filter(e => e !== null);
+    if (validationErrors.length > 0) {
+      return res.status(400).json({ error: validationErrors[0] });
+    }
+
+    // Sanitize inputs
+    const sanitizedName = sanitizeString(name);
+    const sanitizedBio = bio ? sanitizeString(bio) : '';
+    const sanitizedEmail = email ? sanitizeString(email).toLowerCase() : '';
+
+    // Length validation
+    const lengthError = validateLength(sanitizedName, 'Stylist name', 2, 100);
+    if (lengthError) {
+      return res.status(400).json({ error: lengthError });
+    }
+
+    // Email validation (if provided)
+    if (sanitizedEmail && !validateEmail(sanitizedEmail)) {
+      return res.status(400).json({ error: 'Invalid email format' });
+    }
+
+    // Experience validation
+    if (experience) {
+      const expError = validateNumber(experience, 'Experience', 0, 100);
+      if (expError) {
+        return res.status(400).json({ error: expError });
+      }
+    }
+
     const { data: stylist, error } = await supabase
       .from('stylists')
       .insert([{
         business_id: businessId,
-        name,
-        bio,
+        name: sanitizedName,
+        bio: sanitizedBio,
         specialties: Array.isArray(specialties) ? specialties : [specialties],
         experience: parseInt(experience) || 0,
-        email,
+        email: sanitizedEmail,
         is_active: is_active !== false
       }])
       .select()
@@ -559,14 +874,47 @@ app.put('/api/business/stylists/:id', authenticateToken, requireBusinessAuth, as
     const stylistId = req.params.id;
     const { name, bio, specialties, experience, email, is_active } = req.body;
 
+    // Validation
+    const errors = [];
+    errors.push(validateRequired(name, 'Stylist name'));
+    
+    const validationErrors = errors.filter(e => e !== null);
+    if (validationErrors.length > 0) {
+      return res.status(400).json({ error: validationErrors[0] });
+    }
+
+    // Sanitize inputs
+    const sanitizedName = sanitizeString(name);
+    const sanitizedBio = bio ? sanitizeString(bio) : '';
+    const sanitizedEmail = email ? sanitizeString(email).toLowerCase() : '';
+
+    // Length validation
+    const lengthError = validateLength(sanitizedName, 'Stylist name', 2, 100);
+    if (lengthError) {
+      return res.status(400).json({ error: lengthError });
+    }
+
+    // Email validation (if provided)
+    if (sanitizedEmail && !validateEmail(sanitizedEmail)) {
+      return res.status(400).json({ error: 'Invalid email format' });
+    }
+
+    // Experience validation
+    if (experience) {
+      const expError = validateNumber(experience, 'Experience', 0, 100);
+      if (expError) {
+        return res.status(400).json({ error: expError });
+      }
+    }
+
     const { data: stylist, error } = await supabase
       .from('stylists')
       .update({
-        name,
-        bio,
+        name: sanitizedName,
+        bio: sanitizedBio,
         specialties: Array.isArray(specialties) ? specialties : [specialties],
         experience: parseInt(experience) || 0,
-        email,
+        email: sanitizedEmail,
         is_active
       })
       .eq('id', stylistId)
@@ -649,9 +997,23 @@ app.put('/api/business/appointments/:id/status', authenticateToken, requireBusin
     const appointmentId = req.params.id;
     const { status } = req.body;
 
+    // Validation
+    if (!status) {
+      return res.status(400).json({ error: 'Status is required' });
+    }
+
+    // Sanitize input
+    const sanitizedStatus = sanitizeString(status);
+
+    // Validate status value
+    const validStatuses = ['pending', 'confirmed', 'completed', 'cancelled', 'no-show'];
+    if (!validStatuses.includes(sanitizedStatus)) {
+      return res.status(400).json({ error: 'Invalid status value' });
+    }
+
     const { data: appointment, error } = await supabase
       .from('appointments')
-      .update({ status })
+      .update({ status: sanitizedStatus })
       .eq('id', appointmentId)
       .eq('business_id', businessId)
       .select()
@@ -694,7 +1056,36 @@ app.put('/api/business/hours', authenticateToken, requireBusinessAuth, async (re
     const businessId = req.user.id;
     const { hours } = req.body;
 
+    // Validation
+    if (!hours || !Array.isArray(hours) || hours.length === 0) {
+      return res.status(400).json({ error: 'Business hours data is required' });
+    }
+
+    // Validate time format
+    const timeRegex = /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/;
+
     for (const hour of hours) {
+      // Validate required fields
+      if (hour.day === undefined || hour.open_time === undefined || hour.close_time === undefined) {
+        return res.status(400).json({ error: 'Each hour entry must have day, open_time, and close_time' });
+      }
+
+      // Validate day (0-6)
+      const dayError = validateNumber(hour.day, 'Day', 0, 6);
+      if (dayError) {
+        return res.status(400).json({ error: dayError });
+      }
+
+      // Validate time format
+      if (!hour.is_closed) {
+        if (!timeRegex.test(hour.open_time)) {
+          return res.status(400).json({ error: 'Invalid open time format' });
+        }
+        if (!timeRegex.test(hour.close_time)) {
+          return res.status(400).json({ error: 'Invalid close time format' });
+        }
+      }
+
       const { error } = await supabase
         .from('business_hours')
         .update({
@@ -834,7 +1225,56 @@ app.get('/api/customer/available-slots/:businessId', async (req, res) => {
 // Book Appointment
 app.post('/api/customer/book-appointment', async (req, res) => {
   try {
+    // Rate limiting
+    const clientIp = req.ip || req.connection.remoteAddress;
+    if (!checkRateLimit(`booking_${clientIp}`, 3, 300000)) {
+      return res.status(429).json({ error: 'Too many booking attempts. Please try again later.' });
+    }
+
     const { businessId, customerName, customerPhone, serviceId, stylistId, appointmentDate, appointmentTime, specialRequests } = req.body;
+
+    // Validation
+    const errors = [];
+    errors.push(validateRequired(businessId, 'Business ID'));
+    errors.push(validateRequired(customerName, 'Customer name'));
+    errors.push(validateRequired(customerPhone, 'Phone number'));
+    errors.push(validateRequired(serviceId, 'Service'));
+    errors.push(validateRequired(stylistId, 'Stylist'));
+    errors.push(validateRequired(appointmentDate, 'Appointment date'));
+    errors.push(validateRequired(appointmentTime, 'Appointment time'));
+    
+    const validationErrors = errors.filter(e => e !== null);
+    if (validationErrors.length > 0) {
+      return res.status(400).json({ error: validationErrors[0] });
+    }
+
+    // Sanitize inputs
+    const sanitizedCustomerName = sanitizeString(customerName);
+    const sanitizedCustomerPhone = sanitizeString(customerPhone);
+    const sanitizedSpecialRequests = specialRequests ? sanitizeString(specialRequests) : '';
+
+    // Length validation
+    const lengthError = validateLength(sanitizedCustomerName, 'Customer name', 2, 100);
+    if (lengthError) {
+      return res.status(400).json({ error: lengthError });
+    }
+
+    // Phone validation
+    if (!validatePhone(sanitizedCustomerPhone)) {
+      return res.status(400).json({ error: 'Invalid phone number format' });
+    }
+
+    // Date validation
+    const appointmentDateObj = new Date(appointmentDate);
+    if (isNaN(appointmentDateObj.getTime())) {
+      return res.status(400).json({ error: 'Invalid appointment date' });
+    }
+
+    // Time validation
+    const timeRegex = /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/;
+    if (!timeRegex.test(appointmentTime)) {
+      return res.status(400).json({ error: 'Invalid appointment time format' });
+    }
 
     // Get service details to get duration
     const { data: service, error: serviceError } = await supabase
@@ -852,7 +1292,7 @@ app.post('/api/customer/book-appointment', async (req, res) => {
     const { data: existingCustomer } = await supabase
       .from('customers')
       .select('id')
-      .eq('phone', customerPhone)
+      .eq('phone', sanitizedCustomerPhone)
       .single();
 
     if (!existingCustomer) {
@@ -860,8 +1300,8 @@ app.post('/api/customer/book-appointment', async (req, res) => {
         .from('customers')
         .insert([{
           id: customerId,
-          name: customerName,
-          phone: customerPhone
+          name: sanitizedCustomerName,
+          phone: sanitizedCustomerPhone
         }]);
 
       if (customerError) throw customerError;
@@ -973,9 +1413,23 @@ app.put('/api/admin/leads/:id', authenticateToken, requireAdminAuth, async (req,
     const leadId = req.params.id;
     const { status } = req.body;
 
+    // Validation
+    if (!status) {
+      return res.status(400).json({ error: 'Status is required' });
+    }
+
+    // Sanitize input
+    const sanitizedStatus = sanitizeString(status);
+
+    // Validate status value
+    const validStatuses = ['new', 'contacted', 'qualified', 'converted', 'rejected'];
+    if (!validStatuses.includes(sanitizedStatus)) {
+      return res.status(400).json({ error: 'Invalid status value' });
+    }
+
     const { data: lead, error } = await supabase
       .from('insurance_leads')
-      .update({ status, last_contacted: new Date().toISOString() })
+      .update({ status: sanitizedStatus, last_contacted: new Date().toISOString() })
       .eq('id', leadId)
       .select()
       .single();
