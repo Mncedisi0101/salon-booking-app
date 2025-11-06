@@ -6,14 +6,68 @@ class CustomerBooking {
         this.selectedStylist = null;
         this.selectedDate = null;
         this.selectedTime = null;
+        this.services = [];
+        this.stylists = [];
         this.init();
     }
 
     async init() {
         await this.loadBusinessFromURL();
-        this.loadServices();
-        this.loadStylists();
+        await this.loadServices();
+        await this.loadStylists();
         this.setupEventListeners();
+    }
+
+    nextStep(stepId) {
+        // Hide all steps
+        document.querySelectorAll('.booking-step').forEach(step => {
+            step.classList.remove('active');
+        });
+
+        // Show the target step
+        const targetStep = document.getElementById(stepId);
+        if (targetStep) {
+            targetStep.classList.add('active');
+        }
+
+        // Update progress indicators
+        this.updateProgressIndicators(stepId);
+    }
+
+    previousStep(stepId) {
+        this.nextStep(stepId);
+    }
+
+    updateProgressIndicators(currentStepId) {
+        const stepMap = {
+            'serviceStep': 1,
+            'stylistStep': 2,
+            'dateStep': 3,
+            'customerInfoStep': 4
+        };
+
+        const currentStepNumber = stepMap[currentStepId];
+
+        document.querySelectorAll('.progress-step').forEach((indicator, index) => {
+            const stepNumber = index + 1;
+            if (stepNumber < currentStepNumber) {
+                indicator.classList.add('completed');
+                indicator.classList.remove('active');
+            } else if (stepNumber === currentStepNumber) {
+                indicator.classList.add('active');
+                indicator.classList.remove('completed');
+            } else {
+                indicator.classList.remove('active', 'completed');
+            }
+        });
+    }
+
+    bookAnother() {
+        // Reset and go back to first step
+        this.resetBooking();
+        document.getElementById('confirmationStep').style.display = 'none';
+        document.getElementById('bookingSteps').style.display = 'block';
+        this.nextStep('serviceStep');
     }
 
     async loadBusinessFromURL() {
@@ -21,21 +75,34 @@ class CustomerBooking {
         const businessId = urlParams.get('business');
         
         if (!businessId) {
-            alert('Invalid business link');
+            alert('Invalid business link. Please scan the QR code again.');
+            window.location.href = '/';
             return;
         }
 
         try {
             const response = await fetch(`/api/customer/business/${businessId}`);
+            
+            if (!response.ok) {
+                throw new Error('Business not found');
+            }
+            
             const business = await response.json();
             this.currentBusiness = business;
             
+            // Update header with business info
             document.getElementById('businessName').textContent = business.business_name;
-            document.getElementById('businessContact').textContent = `${business.phone} | ${business.email}`;
+            
+            // Update footer
+            const footerBusinessName = document.getElementById('footerBusinessName');
+            const footerBusinessPhone = document.getElementById('footerBusinessPhone');
+            if (footerBusinessName) footerBusinessName.textContent = business.business_name;
+            if (footerBusinessPhone) footerBusinessPhone.textContent = business.phone;
 
         } catch (error) {
             console.error('Error loading business:', error);
-            alert('Failed to load business information');
+            alert('Failed to load business information. Please try again.');
+            window.location.href = '/';
         }
     }
 
@@ -45,73 +112,82 @@ class CustomerBooking {
         try {
             const response = await fetch(`/api/customer/services/${this.currentBusiness.id}`);
             const services = await response.json();
+            this.services = services;
             this.renderServices(services);
 
         } catch (error) {
             console.error('Error loading services:', error);
+            alert('Failed to load services. Please try again.');
         }
     }
 
     renderServices(services) {
-        const container = document.getElementById('servicesContainer');
-        container.innerHTML = '';
+        const selectElement = document.getElementById('serviceSelect');
+        if (!selectElement) return;
+        
+        selectElement.innerHTML = '';
+
+        if (services.length === 0) {
+            selectElement.innerHTML = '<option value="">No services available</option>';
+            return;
+        }
 
         services.forEach(service => {
-            const card = document.createElement('div');
-            card.className = 'col-md-6 mb-3';
-            card.innerHTML = `
-                <div class="card service-card ${this.selectedService?.id === service.id ? 'border-primary' : ''}" 
-                     data-service-id="${service.id}">
-                    <div class="card-body">
-                        <h5 class="card-title">${service.name}</h5>
-                        <p class="card-text">${service.description || 'No description available'}</p>
-                        <div class="d-flex justify-content-between align-items-center">
-                            <span class="h6 mb-0">$${service.price}</span>
-                            <span class="text-muted">${service.duration} mins</span>
-                        </div>
-                        <button class="btn btn-primary mt-2 select-service" 
-                                data-service-id="${service.id}">
-                            Select
-                        </button>
-                    </div>
-                </div>
-            `;
-            container.appendChild(card);
+            const option = document.createElement('option');
+            option.value = service.id;
+            option.textContent = `${service.name} - $${service.price} (${service.duration} mins)`;
+            option.dataset.name = service.name;
+            option.dataset.price = service.price;
+            option.dataset.duration = service.duration;
+            selectElement.appendChild(option);
         });
 
         this.attachServiceSelectionListeners();
     }
 
     attachServiceSelectionListeners() {
-        document.querySelectorAll('.select-service').forEach(button => {
-            button.addEventListener('click', (e) => {
-                const serviceId = e.target.dataset.serviceId;
-                this.selectService(serviceId);
-            });
+        const selectElement = document.getElementById('serviceSelect');
+        if (!selectElement) return;
+
+        selectElement.addEventListener('change', (e) => {
+            if (e.target.value) {
+                const selectedOption = e.target.options[e.target.selectedIndex];
+                this.selectService(e.target.value, selectedOption);
+            }
         });
     }
 
-    selectService(serviceId) {
-        // Remove previous selection
-        document.querySelectorAll('.service-card').forEach(card => {
-            card.classList.remove('border-primary');
-        });
-
-        // Add selection to current card
-        const selectedCard = document.querySelector(`[data-service-id="${serviceId}"]`);
-        if (selectedCard) {
-            selectedCard.classList.add('border-primary');
-        }
-
+    selectService(serviceId, selectedOption) {
         this.selectedService = {
             id: serviceId,
-            name: selectedCard.querySelector('.card-title').textContent,
-            price: selectedCard.querySelector('.h6').textContent.replace('$', ''),
-            duration: selectedCard.querySelector('.text-muted').textContent.replace(' mins', '')
+            name: selectedOption.dataset.name,
+            price: selectedOption.dataset.price,
+            duration: selectedOption.dataset.duration
         };
 
-        document.getElementById('selectedService').textContent = this.selectedService.name;
-        document.getElementById('step2').classList.remove('disabled');
+        // Update selected services display
+        const selectedServicesDiv = document.getElementById('selectedServices');
+        const selectedServiceDetails = document.getElementById('selectedServiceDetails');
+        
+        if (selectedServicesDiv && selectedServiceDetails) {
+            selectedServiceDetails.innerHTML = `
+                <p><strong>${this.selectedService.name}</strong></p>
+                <p>Price: $${this.selectedService.price}</p>
+                <p>Duration: ${this.selectedService.duration} minutes</p>
+            `;
+            selectedServicesDiv.style.display = 'block';
+        }
+
+        // Update summary
+        document.getElementById('summaryService').textContent = this.selectedService.name;
+        document.getElementById('summaryDuration').textContent = `${this.selectedService.duration} minutes`;
+        document.getElementById('summaryTotal').textContent = `$${this.selectedService.price}`;
+
+        // Enable next button
+        const nextButton = document.getElementById('nextToStylist');
+        if (nextButton) {
+            nextButton.disabled = false;
+        }
     }
 
     async loadStylists() {
@@ -120,73 +196,80 @@ class CustomerBooking {
         try {
             const response = await fetch(`/api/customer/stylists/${this.currentBusiness.id}`);
             const stylists = await response.json();
+            this.stylists = stylists;
             this.renderStylists(stylists);
 
         } catch (error) {
             console.error('Error loading stylists:', error);
+            alert('Failed to load stylists. Please try again.');
         }
     }
 
     renderStylists(stylists) {
-        const container = document.getElementById('stylistsContainer');
-        container.innerHTML = '';
+        const selectElement = document.getElementById('stylistSelect');
+        if (!selectElement) return;
+        
+        selectElement.innerHTML = '';
+
+        if (stylists.length === 0) {
+            selectElement.innerHTML = '<option value="">No stylists available</option>';
+            return;
+        }
 
         stylists.forEach(stylist => {
-            const card = document.createElement('div');
-            card.className = 'col-md-6 mb-3';
-            card.innerHTML = `
-                <div class="card stylist-card ${this.selectedStylist?.id === stylist.id ? 'border-primary' : ''}" 
-                     data-stylist-id="${stylist.id}">
-                    <div class="card-body">
-                        <h5 class="card-title">${stylist.name}</h5>
-                        <p class="card-text">${stylist.bio || 'No bio available'}</p>
-                        <div class="mb-2">
-                            <strong>Specialties:</strong> ${stylist.specialties?.join(', ') || 'None'}
-                        </div>
-                        <div class="text-muted">
-                            Experience: ${stylist.experience || 0} years
-                        </div>
-                        <button class="btn btn-primary mt-2 select-stylist" 
-                                data-stylist-id="${stylist.id}">
-                            Select
-                        </button>
-                    </div>
-                </div>
-            `;
-            container.appendChild(card);
+            const option = document.createElement('option');
+            option.value = stylist.id;
+            option.textContent = `${stylist.name} (${stylist.experience || 0} years exp)`;
+            option.dataset.name = stylist.name;
+            option.dataset.bio = stylist.bio || 'No bio available';
+            option.dataset.experience = stylist.experience || 0;
+            selectElement.appendChild(option);
         });
 
         this.attachStylistSelectionListeners();
     }
 
     attachStylistSelectionListeners() {
-        document.querySelectorAll('.select-stylist').forEach(button => {
-            button.addEventListener('click', (e) => {
-                const stylistId = e.target.dataset.stylistId;
-                this.selectStylist(stylistId);
-            });
+        const selectElement = document.getElementById('stylistSelect');
+        if (!selectElement) return;
+
+        selectElement.addEventListener('change', (e) => {
+            if (e.target.value) {
+                const selectedOption = e.target.options[e.target.selectedIndex];
+                this.selectStylist(e.target.value, selectedOption);
+            }
         });
     }
 
-    selectStylist(stylistId) {
-        // Remove previous selection
-        document.querySelectorAll('.stylist-card').forEach(card => {
-            card.classList.remove('border-primary');
-        });
-
-        // Add selection to current card
-        const selectedCard = document.querySelector(`[data-stylist-id="${stylistId}"]`);
-        if (selectedCard) {
-            selectedCard.classList.add('border-primary');
-        }
-
+    selectStylist(stylistId, selectedOption) {
         this.selectedStylist = {
             id: stylistId,
-            name: selectedCard.querySelector('.card-title').textContent
+            name: selectedOption.dataset.name,
+            bio: selectedOption.dataset.bio,
+            experience: selectedOption.dataset.experience
         };
 
-        document.getElementById('selectedStylist').textContent = this.selectedStylist.name;
-        document.getElementById('step3').classList.remove('disabled');
+        // Update stylist info display
+        const stylistInfoDiv = document.getElementById('stylistInfo');
+        const stylistNameElement = document.getElementById('stylistName');
+        const stylistBioElement = document.getElementById('stylistBio');
+        const stylistExperienceElement = document.getElementById('stylistExperience');
+        
+        if (stylistInfoDiv && stylistNameElement) {
+            stylistNameElement.textContent = this.selectedStylist.name;
+            stylistBioElement.textContent = this.selectedStylist.bio;
+            stylistExperienceElement.textContent = `${this.selectedStylist.experience} years of experience`;
+            stylistInfoDiv.style.display = 'block';
+        }
+
+        // Update summary
+        document.getElementById('summaryStylist').textContent = this.selectedStylist.name;
+
+        // Enable next button
+        const nextButton = document.getElementById('nextToDate');
+        if (nextButton) {
+            nextButton.disabled = false;
+        }
         
         // Load available dates
         this.loadAvailableDates();
@@ -221,20 +304,23 @@ class CustomerBooking {
     }
 
     renderTimeSlots(timeSlots) {
-        const container = document.getElementById('timeSlotsContainer');
+        const container = document.getElementById('timeSlots');
+        if (!container) return;
+        
         container.innerHTML = '';
 
         if (timeSlots.length === 0) {
-            container.innerHTML = '<p class="text-muted">No available time slots for this date.</p>';
+            container.innerHTML = '<div class="text-muted">No available time slots for this date.</div>';
             return;
         }
 
         timeSlots.forEach(timeSlot => {
             const button = document.createElement('button');
             button.type = 'button';
-            button.className = `btn btn-outline-primary time-slot ${this.selectedTime === timeSlot ? 'active' : ''}`;
+            button.className = `btn btn-outline-primary m-1 time-slot ${this.selectedTime === timeSlot ? 'active' : ''}`;
             button.textContent = timeSlot;
-            button.addEventListener('click', () => {
+            button.dataset.time = timeSlot;
+            button.addEventListener('click', (e) => {
                 this.selectTime(timeSlot);
             });
             container.appendChild(button);
@@ -247,11 +333,19 @@ class CustomerBooking {
         // Update UI
         document.querySelectorAll('.time-slot').forEach(btn => {
             btn.classList.remove('active');
+            if (btn.dataset.time === time) {
+                btn.classList.add('active');
+            }
         });
-        event.target.classList.add('active');
         
-        document.getElementById('selectedTime').textContent = time;
-        document.getElementById('step4').classList.remove('disabled');
+        // Update summary
+        document.getElementById('summaryDateTime').textContent = `${this.selectedDate} at ${time}`;
+        
+        // Enable next button
+        const nextButton = document.getElementById('nextToInfo');
+        if (nextButton) {
+            nextButton.disabled = false;
+        }
     }
 
     async bookAppointment(customerData) {
@@ -261,6 +355,10 @@ class CustomerBooking {
         }
 
         try {
+            // Show loading overlay
+            const loadingOverlay = document.getElementById('loadingOverlay');
+            if (loadingOverlay) loadingOverlay.style.display = 'flex';
+
             const bookingData = {
                 businessId: this.currentBusiness.id,
                 customerName: customerData.name,
@@ -269,7 +367,7 @@ class CustomerBooking {
                 stylistId: this.selectedStylist.id,
                 appointmentDate: this.selectedDate,
                 appointmentTime: this.selectedTime,
-                specialRequests: document.getElementById('specialRequests').value
+                specialRequests: customerData.specialRequests || ''
             };
 
             const response = await fetch('/api/customer/book-appointment', {
@@ -283,15 +381,42 @@ class CustomerBooking {
             const data = await response.json();
 
             if (data.success) {
-                alert('Appointment booked successfully!');
-                this.resetBooking();
+                // Show confirmation
+                this.showConfirmation(data.appointment);
             } else {
                 alert(data.error || 'Failed to book appointment');
             }
         } catch (error) {
             console.error('Error booking appointment:', error);
-            alert('Failed to book appointment');
+            alert('Failed to book appointment. Please try again.');
+        } finally {
+            const loadingOverlay = document.getElementById('loadingOverlay');
+            if (loadingOverlay) loadingOverlay.style.display = 'none';
         }
+    }
+
+    showConfirmation(appointment) {
+        // Hide booking steps
+        document.getElementById('bookingSteps').style.display = 'none';
+        
+        // Show confirmation
+        const confirmationStep = document.getElementById('confirmationStep');
+        const confirmationDetails = document.getElementById('confirmationDetails');
+        
+        confirmationDetails.innerHTML = `
+            <div class="card mb-3">
+                <div class="card-body">
+                    <p><strong>Service:</strong> ${this.selectedService.name}</p>
+                    <p><strong>Stylist:</strong> ${this.selectedStylist.name}</p>
+                    <p><strong>Date:</strong> ${this.selectedDate}</p>
+                    <p><strong>Time:</strong> ${this.selectedTime}</p>
+                    <p><strong>Duration:</strong> ${this.selectedService.duration} minutes</p>
+                    <p><strong>Total:</strong> $${this.selectedService.price}</p>
+                </div>
+            </div>
+        `;
+        
+        confirmationStep.style.display = 'block';
     }
 
     resetBooking() {
@@ -300,20 +425,40 @@ class CustomerBooking {
         this.selectedDate = null;
         this.selectedTime = null;
         
-        document.getElementById('selectedService').textContent = 'None';
-        document.getElementById('selectedStylist').textContent = 'None';
-        document.getElementById('selectedDate').textContent = 'None';
-        document.getElementById('selectedTime').textContent = 'None';
+        // Reset form
+        const bookingForm = document.getElementById('bookingForm');
+        if (bookingForm) bookingForm.reset();
         
-        document.querySelectorAll('.step').forEach(step => {
-            if (step.id !== 'step1') {
-                step.classList.add('disabled');
-            }
-        });
+        // Reset select elements
+        const serviceSelect = document.getElementById('serviceSelect');
+        const stylistSelect = document.getElementById('stylistSelect');
+        const dateInput = document.getElementById('appointmentDate');
         
-        document.getElementById('bookingForm').reset();
-        this.loadServices();
-        this.loadStylists();
+        if (serviceSelect) serviceSelect.selectedIndex = 0;
+        if (stylistSelect) stylistSelect.selectedIndex = 0;
+        if (dateInput) dateInput.value = '';
+        
+        // Hide info displays
+        const selectedServices = document.getElementById('selectedServices');
+        const stylistInfo = document.getElementById('stylistInfo');
+        if (selectedServices) selectedServices.style.display = 'none';
+        if (stylistInfo) stylistInfo.style.display = 'none';
+        
+        // Reset summary
+        document.getElementById('summaryService').textContent = '-';
+        document.getElementById('summaryStylist').textContent = '-';
+        document.getElementById('summaryDateTime').textContent = '-';
+        document.getElementById('summaryDuration').textContent = '-';
+        document.getElementById('summaryTotal').textContent = '$0.00';
+        
+        // Disable next buttons
+        document.getElementById('nextToStylist').disabled = true;
+        document.getElementById('nextToDate').disabled = true;
+        document.getElementById('nextToInfo').disabled = true;
+        
+        // Clear time slots
+        const timeSlots = document.getElementById('timeSlots');
+        if (timeSlots) timeSlots.innerHTML = '<div class="text-muted">Select a date first</div>';
     }
 
     setupEventListeners() {
@@ -322,9 +467,9 @@ class CustomerBooking {
         if (dateInput) {
             dateInput.addEventListener('change', (e) => {
                 this.selectedDate = e.target.value;
-                document.getElementById('selectedDate').textContent = this.selectedDate;
-                document.getElementById('step4').classList.remove('disabled');
-                this.loadAvailableTimes();
+                if (this.selectedDate) {
+                    this.loadAvailableTimes();
+                }
             });
         }
 
@@ -336,33 +481,32 @@ class CustomerBooking {
                 
                 const customerData = {
                     name: document.getElementById('customerName').value,
-                    phone: document.getElementById('customerPhone').value
+                    phone: document.getElementById('customerPhone').value,
+                    specialRequests: document.getElementById('specialRequests').value
                 };
 
-                // Check if customer is logged in
-                if (this.authManager.isCustomer()) {
-                    await this.bookAppointment(customerData);
-                } else {
-                    // Show login/register modal
-                    openModal('customerAuthModal');
-                    // Store booking data for after authentication
-                    this.pendingBooking = customerData;
-                }
+                await this.bookAppointment(customerData);
             });
         }
 
-        // Customer authentication success
-        document.addEventListener('customerAuthenticated', () => {
-            if (this.pendingBooking) {
-                this.bookAppointment(this.pendingBooking);
-                this.pendingBooking = null;
-                closeModal('customerAuthModal');
+        // Pre-fill customer info if logged in
+        if (this.authManager.isCustomer() && this.authManager.currentUser) {
+            const customerNameInput = document.getElementById('customerName');
+            const customerPhoneInput = document.getElementById('customerPhone');
+            
+            if (customerNameInput && this.authManager.currentUser.name) {
+                customerNameInput.value = this.authManager.currentUser.name;
             }
-        });
+            if (customerPhoneInput && this.authManager.currentUser.phone) {
+                customerPhoneInput.value = this.authManager.currentUser.phone;
+            }
+        }
     }
 }
 
 // Initialize customer booking when DOM is loaded
+let customerBooking;
 document.addEventListener('DOMContentLoaded', function() {
-    new CustomerBooking();
+    customerBooking = new CustomerBooking();
+    window.customerBooking = customerBooking; // Make it globally accessible
 });
