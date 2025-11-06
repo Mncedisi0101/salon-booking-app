@@ -398,25 +398,25 @@ class BusinessDashboard {
                 <td><span class="badge ${statusClass}">${this.capitalizeFirst(appointment.status)}</span></td>
                 <td>
                     <div class="btn-group">
-                        ${appointment.status === 'pending' ? `
-                            <button class="btn btn-sm btn-success confirm-appointment" data-id="${appointment.id}" title="Confirm">
-                                <i class="fas fa-check"></i>
+                            ${appointment.status === 'pending' ? `
+                                <button class="btn btn-sm confirm-appointment" style="background-color:#ffc107;color:#212529;border:none;" data-id="${appointment.id}" title="Confirm">
+                                    <i class="fas fa-check"></i>
+                                </button>
+                            ` : ''}
+                            ${appointment.status === 'confirmed' ? `
+                                <button class="btn btn-sm complete-appointment" style="background-color:#0dcaf0;color:#fff;border:none;" data-id="${appointment.id}" title="Complete">
+                                    <i class="fas fa-check-double"></i>
+                                </button>
+                            ` : ''}
+                            ${appointment.status !== 'completed' && appointment.status !== 'cancelled' ? `
+                                <button class="btn btn-sm cancel-appointment" style="background-color:#dc3545;color:#fff;border:none;" data-id="${appointment.id}" title="Cancel">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                            ` : ''}
+                            <button class="btn btn-sm view-appointment" style="background-color:#6610f2;color:#fff;border:none;" data-id="${appointment.id}" title="View Details">
+                                <i class="fas fa-eye"></i>
                             </button>
-                        ` : ''}
-                        ${appointment.status === 'confirmed' ? `
-                            <button class="btn btn-sm btn-primary complete-appointment" data-id="${appointment.id}" title="Complete">
-                                <i class="fas fa-check-double"></i>
-                            </button>
-                        ` : ''}
-                        ${appointment.status !== 'completed' && appointment.status !== 'cancelled' ? `
-                            <button class="btn btn-sm btn-danger cancel-appointment" data-id="${appointment.id}" title="Cancel">
-                                <i class="fas fa-times"></i>
-                            </button>
-                        ` : ''}
-                        <button class="btn btn-sm btn-info view-appointment" data-id="${appointment.id}" title="View Details">
-                            <i class="fas fa-eye"></i>
-                        </button>
-                    </div>
+                        </div>
                 </td>
             `;
             tbody.appendChild(row);
@@ -809,6 +809,110 @@ class BusinessDashboard {
             default: return 'Dashboard Overview';
         }
     }
+
+    // Download QR Code
+    downloadQRCode() {
+        const qrCodeImg = document.getElementById('qrCodeImage');
+        if (!qrCodeImg || !qrCodeImg.src) {
+            alert('QR Code not available');
+            return;
+        }
+
+        // Create a temporary link element
+        const link = document.createElement('a');
+        link.href = qrCodeImg.src;
+        link.download = `${this.currentBusiness?.business_name || 'salon'}-qrcode.png`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    }
+
+    // Print QR Code
+    printQRCode() {
+        const qrCodeImg = document.getElementById('qrCodeImage');
+        if (!qrCodeImg || !qrCodeImg.src) {
+            alert('QR Code not available');
+            return;
+        }
+
+        // Create a new window for printing
+        const printWindow = window.open('', '_blank');
+        const businessName = this.currentBusiness?.business_name || 'Salon';
+        
+        printWindow.document.write(`
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <title>QR Code - ${businessName}</title>
+                <style>
+                    body {
+                        font-family: Arial, sans-serif;
+                        display: flex;
+                        flex-direction: column;
+                        align-items: center;
+                        justify-content: center;
+                        min-height: 100vh;
+                        margin: 0;
+                        padding: 20px;
+                    }
+                    h1 {
+                        color: #333;
+                        margin-bottom: 10px;
+                        font-size: 28px;
+                    }
+                    h2 {
+                        color: #666;
+                        font-weight: normal;
+                        margin-bottom: 30px;
+                        font-size: 18px;
+                    }
+                    img {
+                        max-width: 400px;
+                        height: auto;
+                        border: 2px solid #ddd;
+                        padding: 20px;
+                        background: white;
+                    }
+                    .instructions {
+                        margin-top: 30px;
+                        text-align: center;
+                        max-width: 500px;
+                    }
+                    .instructions p {
+                        color: #555;
+                        line-height: 1.6;
+                        margin: 10px 0;
+                    }
+                    @media print {
+                        body {
+                            padding: 0;
+                        }
+                    }
+                </style>
+            </head>
+            <body>
+                <h1>${businessName}</h1>
+                <h2>Scan to Book an Appointment</h2>
+                <img src="${qrCodeImg.src}" alt="QR Code">
+                <div class="instructions">
+                    <p><strong>How to use:</strong></p>
+                    <p>1. Scan this QR code with your phone camera</p>
+                    <p>2. Register or log in to book your appointment</p>
+                    <p>3. Choose your preferred service, stylist, and time</p>
+                </div>
+            </body>
+            </html>
+        `);
+        
+        printWindow.document.close();
+        
+        // Wait for image to load before printing
+        printWindow.onload = function() {
+            setTimeout(() => {
+                printWindow.print();
+            }, 250);
+        };
+    }
 }
 
 // Initialize dashboard when DOM is loaded
@@ -818,4 +922,6 @@ document.addEventListener('DOMContentLoaded', function() {
     window.showSection = (id) => dashboard.showSection(id);
     window.openAddStylistModal = () => dashboard.openAddStylistModal();
     window.openAddServiceModal = () => dashboard.openAddServiceModal();
+    window.downloadQRCode = () => dashboard.downloadQRCode();
+    window.printQRCode = () => dashboard.printQRCode();
 });

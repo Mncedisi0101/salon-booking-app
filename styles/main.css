@@ -124,6 +124,17 @@ h4 { font-size: var(--font-size-xl); }
     box-shadow: var(--shadow-md);
 }
 
+.btn-success {
+    background-color: #28a745;
+    color: var(--white);
+}
+
+.btn-success:hover {
+    background-color: #218838;
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+}
+
 .btn-outline {
     border: 2px solid var(--indigo-dye);
     color: var(--indigo-dye);
