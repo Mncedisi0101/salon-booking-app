@@ -663,7 +663,7 @@ app.post('/api/business/services', authenticateToken, requireBusinessAuth, async
 
     // Category validation (whitelist)
     if (sanitizedCategory) {
-      const validCategories = ['haircut', 'coloring', 'styling', 'treatment', 'nails', 'spa', 'makeup', 'waxing', 'other'];
+      const validCategories = ['hair', 'coloring', 'styling', 'treatment', 'nails', 'spa', 'makeup', 'skincare', 'waxing', 'other'];
       if (!validCategories.includes(sanitizedCategory.toLowerCase())) {
         return res.status(400).json({ error: 'Invalid service category' });
       }
