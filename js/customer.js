@@ -492,6 +492,37 @@ class CustomerBooking {
     }
 
     setupEventListeners() {
+        // Navigation buttons
+        const nextToStylistBtn = document.getElementById('nextToStylist');
+        if (nextToStylistBtn) {
+            nextToStylistBtn.addEventListener('click', () => this.nextStep('stylistStep'));
+        }
+
+        const nextToDateBtn = document.getElementById('nextToDate');
+        if (nextToDateBtn) {
+            nextToDateBtn.addEventListener('click', () => this.nextStep('dateStep'));
+        }
+
+        const nextToInfoBtn = document.getElementById('nextToInfo');
+        if (nextToInfoBtn) {
+            nextToInfoBtn.addEventListener('click', () => this.nextStep('customerInfoStep'));
+        }
+
+        // Back buttons
+        const backButtons = document.querySelectorAll('.btn-secondary');
+        backButtons.forEach(btn => {
+            const onclickAttr = btn.getAttribute('onclick');
+            if (onclickAttr && onclickAttr.includes('previousStep')) {
+                btn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    const match = onclickAttr.match(/previousStep\('([^']+)'\)/);
+                    if (match) {
+                        this.previousStep(match[1]);
+                    }
+                });
+            }
+        });
+
         // Date selection
         const dateInput = document.getElementById('appointmentDate');
         if (dateInput) {
