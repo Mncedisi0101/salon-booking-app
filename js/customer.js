@@ -132,6 +132,14 @@ class CustomerBooking {
             return;
         }
 
+        // Add a placeholder option
+        const placeholderOption = document.createElement('option');
+        placeholderOption.value = '';
+        placeholderOption.textContent = '-- Select a Service --';
+        placeholderOption.disabled = true;
+        placeholderOption.selected = true;
+        selectElement.appendChild(placeholderOption);
+
         services.forEach(service => {
             const option = document.createElement('option');
             option.value = service.id;
@@ -149,7 +157,11 @@ class CustomerBooking {
         const selectElement = document.getElementById('serviceSelect');
         if (!selectElement) return;
 
-        selectElement.addEventListener('change', (e) => {
+        // Remove any existing listeners by cloning and replacing
+        const newSelectElement = selectElement.cloneNode(true);
+        selectElement.parentNode.replaceChild(newSelectElement, selectElement);
+
+        newSelectElement.addEventListener('change', (e) => {
             if (e.target.value) {
                 const selectedOption = e.target.options[e.target.selectedIndex];
                 this.selectService(e.target.value, selectedOption);
@@ -216,6 +228,14 @@ class CustomerBooking {
             return;
         }
 
+        // Add a placeholder option
+        const placeholderOption = document.createElement('option');
+        placeholderOption.value = '';
+        placeholderOption.textContent = '-- Select a Stylist --';
+        placeholderOption.disabled = true;
+        placeholderOption.selected = true;
+        selectElement.appendChild(placeholderOption);
+
         stylists.forEach(stylist => {
             const option = document.createElement('option');
             option.value = stylist.id;
@@ -233,7 +253,11 @@ class CustomerBooking {
         const selectElement = document.getElementById('stylistSelect');
         if (!selectElement) return;
 
-        selectElement.addEventListener('change', (e) => {
+        // Remove any existing listeners by cloning and replacing
+        const newSelectElement = selectElement.cloneNode(true);
+        selectElement.parentNode.replaceChild(newSelectElement, selectElement);
+
+        newSelectElement.addEventListener('change', (e) => {
             if (e.target.value) {
                 const selectedOption = e.target.options[e.target.selectedIndex];
                 this.selectStylist(e.target.value, selectedOption);
