@@ -479,7 +479,12 @@ class BusinessDashboard {
             const data = await response.json();
             
             if (data.success) {
-                alert(`Appointment ${status} successfully!`);
+                // Show success message with email notification info
+                let message = `Appointment ${status} successfully!`;
+                if (status === 'confirmed' || status === 'cancelled') {
+                    message += '\n\nAn email notification has been sent to the customer.';
+                }
+                alert(message);
                 this.loadAppointments();
             } else {
                 alert(data.error || 'Failed to update appointment');

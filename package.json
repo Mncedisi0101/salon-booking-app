@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.38.0",
+    "@emailjs/nodejs": "^4.0.3",
     "bcryptjs": "^2.4.3",
     "dotenv": "^16.3.1",
      "path": "^0.12.7",

@@ -6,6 +6,7 @@ const bcrypt = require('bcryptjs');
 const { v4: uuidv4 } = require('uuid');
 const qr = require('qr-image');
 const jwt = require('jsonwebtoken');
+const emailjs = require('@emailjs/nodejs');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -129,6 +130,93 @@ const requireAdminAuth = (req, res, next) => {
   }
   next();
 };
+
+// Email sending helper function
+async function sendAppointmentEmail(appointment, status) {
+  try {
+    // Check if EmailJS credentials are configured
+    const serviceId = process.env.EMAILJS_SERVICE_ID;
+    const privateKey = process.env.EMAILJS_PRIVATE_KEY;
+    const publicKey = process.env.EMAILJS_PUBLIC_KEY;
+    
+    if (!serviceId || !privateKey || !publicKey) {
+      console.warn('EmailJS not configured. Set EMAILJS_SERVICE_ID, EMAILJS_PRIVATE_KEY, and EMAILJS_PUBLIC_KEY in environment variables.');
+      return;
+    }
+
+    // Get the appropriate template ID based on status
+    const templateId = status === 'confirmed' 
+      ? process.env.EMAILJS_TEMPLATE_CONFIRMED 
+      : process.env.EMAILJS_TEMPLATE_CANCELLED;
+
+    if (!templateId) {
+      console.warn(`EmailJS template not configured for status: ${status}`);
+      return;
+    }
+
+    const customerEmail = appointment.customers?.email;
+    const customerName = appointment.customers?.name || 'Valued Customer';
+    
+    if (!customerEmail) {
+      console.warn('Customer email not available');
+      return;
+    }
+
+    // Format appointment date
+    const appointmentDate = new Date(appointment.appointment_date);
+    const formattedDate = appointmentDate.toLocaleDateString('en-US', { 
+      year: 'numeric', 
+      month: 'short', 
+      day: 'numeric' 
+    });
+
+    // Prepare email template parameters
+    const templateParams = {
+      to_email: customerEmail,
+      to_name: customerName,
+      business_name: appointment.businesses?.name || 'Our Business',
+      service_name: appointment.services?.name || 'Service',
+      stylist_name: appointment.stylists?.name || 'Stylist',
+      appointment_date: formattedDate,
+      appointment_time: appointment.appointment_time,
+      appointment_status: status,
+      status_message: getStatusMessage(status),
+      business_phone: appointment.businesses?.phone || '',
+      business_address: appointment.businesses?.address || '',
+      service_duration: appointment.services?.duration || 'N/A',
+      service_price: appointment.services?.price || 'N/A'
+    };
+
+    // Send email using EmailJS
+    const response = await emailjs.send(
+      serviceId,
+      templateId,
+      templateParams,
+      {
+        publicKey: publicKey,
+        privateKey: privateKey,
+      }
+    );
+
+    console.log('Email sent successfully:', response);
+    return response;
+  } catch (error) {
+    console.error('Error sending email:', error);
+    throw error;
+  }
+}
+
+// Helper function to get status message
+function getStatusMessage(status) {
+  switch(status) {
+    case 'confirmed':
+      return 'Your appointment has been confirmed! We look forward to seeing you.';
+    case 'cancelled':
+      return 'Your appointment has been cancelled. We apologize for any inconvenience.';
+    default:
+      return `Your appointment status has been updated to ${status}.`;
+  }
+}
 
 // Serve HTML files
 app.get('/', (req, res) => {
@@ -1050,6 +1138,30 @@ app.put('/api/business/appointments/:id/status', authenticateToken, requireBusin
       .single();
 
     if (error) throw error;
+
+    // Send email notification for confirmed or cancelled appointments
+    if (sanitizedStatus === 'confirmed' || sanitizedStatus === 'cancelled') {
+      // Fetch full appointment details with related data
+      const { data: fullAppointment } = await supabase
+        .from('appointments')
+        .select(`
+          *,
+          customers (*),
+          services (*),
+          stylists (*),
+          businesses (*)
+        `)
+        .eq('id', appointmentId)
+        .single();
+
+      if (fullAppointment && fullAppointment.customers?.email) {
+        // Send email asynchronously (don't wait for it to complete)
+        sendAppointmentEmail(fullAppointment, sanitizedStatus).catch(err => {
+          console.error('Email sending failed:', err);
+          // Don't throw error - email failure shouldn't prevent status update
+        });
+      }
+    }
 
     res.json({ success: true, appointment });
 
