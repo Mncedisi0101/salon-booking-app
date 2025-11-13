@@ -29,16 +29,17 @@ Gmail requires an "App Password" for third-party apps to send emails securely. Y
    EMAIL_SERVICE=gmail
    EMAIL_USER=your-email@gmail.com
    EMAIL_PASSWORD=xxxx xxxx xxxx xxxx
-   EMAIL_FROM=your-email@gmail.com
    ```
+   
+   **Note:** `EMAIL_FROM` is no longer needed! The system automatically uses each business owner's email as the sender.
 
 4. **Update Vercel Environment Variables**
    - Go to: https://vercel.com/mncedisi0101s-projects/salon-booking-app/settings/environment-variables
    - Add these new variables (Production, Preview, Development):
      - `EMAIL_SERVICE` = `gmail`
-     - `EMAIL_USER` = your Gmail address
+     - `EMAIL_USER` = your Gmail address (used for SMTP authentication)
      - `EMAIL_PASSWORD` = your 16-character app password
-     - `EMAIL_FROM` = your Gmail address (optional, defaults to EMAIL_USER)
+   - **Note:** `EMAIL_FROM` is no longer needed. The system now automatically uses the business owner's email as the sender, so when customers reply, it goes directly to the business owner, not you!
    - Delete old EmailJS variables (no longer needed):
      - EMAILJS_PUBLIC_KEY
      - EMAILJS_PRIVATE_KEY
@@ -53,7 +54,6 @@ Gmail requires an "App Password" for third-party apps to send emails securely. Y
 EMAIL_SERVICE=outlook
 EMAIL_USER=your-email@outlook.com
 EMAIL_PASSWORD=your-password
-EMAIL_FROM=your-email@outlook.com
 ```
 
 ### Custom SMTP (Any provider)
@@ -64,8 +64,9 @@ EMAIL_PORT=587
 EMAIL_SECURE=false
 EMAIL_USER=your-email@yourdomain.com
 EMAIL_PASSWORD=your-password
-EMAIL_FROM=your-email@yourdomain.com
 ```
+
+**Note:** For all services, business owner emails are used automatically for the "From" and "Reply-To" fields.
 
 ## What Changed?
 
@@ -78,10 +79,23 @@ EMAIL_FROM=your-email@yourdomain.com
 - EMAILJS_TEMPLATE_CANCELLED
 
 **New (Nodemailer):**
-- EMAIL_SERVICE (default: gmail)
-- EMAIL_USER (your email address)
-- EMAIL_PASSWORD (app password)
-- EMAIL_FROM (sender name/email, optional)
+- EMAIL_SERVICE (default: gmail) - Your email provider
+- EMAIL_USER (your email address) - Used for SMTP authentication
+- EMAIL_PASSWORD (app password) - Used for SMTP authentication
+- ~~EMAIL_FROM~~ - **No longer needed!** Each business owner's email is used automatically
+
+### How Email Sending Works Now
+When a business confirms/cancels an appointment:
+1. **SMTP Authentication**: Uses your Gmail (`EMAIL_USER` and `EMAIL_PASSWORD`) to send the email
+2. **From Address**: Displays as the business owner's email to the customer
+3. **Reply-To**: Set to the business owner's email
+4. **Result**: When customers reply, it goes directly to the business owner, not to you!
+
+Example:
+- Your Gmail: `admin@yourdomain.com` (used for sending)
+- Business Owner Email: `salon123@gmail.com`
+- Customer sees email from: `salon123@gmail.com`
+- Customer replies to: `salon123@gmail.com` ✓
 
 ### Benefits of Nodemailer
 ✓ No "browser-only" restrictions
@@ -90,6 +104,7 @@ EMAIL_FROM=your-email@yourdomain.com
 ✓ Beautiful HTML email templates built-in
 ✓ More reliable for production use
 ✓ No external API dependencies
+✓ **Automatic reply-to routing** - Customer replies go directly to business owners!
 
 ## Testing Locally
 
@@ -128,3 +143,4 @@ Customers will receive beautiful HTML emails with:
 - ✓ Color-coded for confirmed (green) or cancelled (red)
 - ✓ Mobile-responsive design
 - ✓ Business contact information
+- ✓ **Reply button goes directly to business owner's email**

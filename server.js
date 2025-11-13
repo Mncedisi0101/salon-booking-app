@@ -168,12 +168,17 @@ async function sendAppointmentEmail(appointment, status) {
     // Check if email credentials are configured
     const emailUser = process.env.EMAIL_USER;
     const emailPassword = process.env.EMAIL_PASSWORD;
-    const emailFrom = process.env.EMAIL_FROM || emailUser;
+    
+    // Use business owner's email as the sender (reply-to email)
+    const businessEmail = appointment.businesses?.email;
+    const businessName = appointment.businesses?.business_name || 'Our Business';
+    const emailFrom = businessEmail || emailUser; // Fallback to system email if business email not available
     
     console.log('📧 Email Configuration Check:');
     console.log('  Email User:', emailUser ? '✓ Set' : '✗ Missing');
     console.log('  Email Password:', emailPassword ? '✓ Set' : '✗ Missing');
     console.log('  Email Service:', process.env.EMAIL_SERVICE || 'gmail (default)');
+    console.log('  Business Email:', businessEmail || '✗ Not available');
     
     if (!emailUser || !emailPassword) {
       console.warn('❌ Email not configured. Set EMAIL_USER and EMAIL_PASSWORD in environment variables.');
@@ -202,7 +207,6 @@ async function sendAppointmentEmail(appointment, status) {
       day: 'numeric' 
     });
 
-    const businessName = appointment.businesses?.business_name || 'Our Business';
     const serviceName = appointment.services?.name || 'Service';
     const stylistName = appointment.stylists?.name || 'Stylist';
     const appointmentTime = appointment.appointment_time;
@@ -284,7 +288,7 @@ async function sendAppointmentEmail(appointment, status) {
             <p>Best regards,<br>${businessName}</p>
           </div>
           <div class="footer">
-            <p>This is an automated message. Please do not reply to this email.</p>
+            <p>For any questions or changes, please reply to this email or contact us at ${businessPhone || businessEmail}.</p>
           </div>
         </div>
       </body>
@@ -314,18 +318,20 @@ Best regards,
 ${businessName}
 
 ---
-This is an automated message. Please do not reply to this email.
+For any questions or changes, please reply to this email or contact us at ${businessPhone || businessEmail}.
     `;
 
     console.log('📤 Sending email...');
     console.log('  To:', customerEmail);
     console.log('  From:', emailFrom);
+    console.log('  Reply-To:', businessEmail);
     console.log('  Subject:', subject);
 
     // Create transporter and send email
     const transporter = createEmailTransporter();
     const mailOptions = {
-      from: `"${businessName}" <${emailFrom}>`,
+      from: `"${businessName}" <${emailUser}>`, // Send from your configured Gmail
+      replyTo: businessEmail, // Replies go to business owner
       to: customerEmail,
       subject: subject,
       text: textBody,
@@ -334,6 +340,7 @@ This is an automated message. Please do not reply to this email.
 
     console.log('📬 Final mail options:', {
       from: mailOptions.from,
+      replyTo: mailOptions.replyTo,
       to: mailOptions.to,
       subject: mailOptions.subject
     });
