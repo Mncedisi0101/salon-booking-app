@@ -6,16 +6,32 @@ const bcrypt = require('bcryptjs');
 const { v4: uuidv4 } = require('uuid');
 const qr = require('qr-image');
 const jwt = require('jsonwebtoken');
-const emailjs = require('@emailjs/nodejs');
+const nodemailer = require('nodemailer');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Initialize Supabase
+// Initialize Supabase (anon key for general use)
 const supabase = createClient(
   process.env.SUPABASE_URL,
   process.env.SUPABASE_ANON_KEY
 );
+
+// Initialize Supabase Admin client (service role) for secure server-side queries
+let supabaseAdmin = null;
+if (process.env.SUPABASE_SERVICE_KEY) {
+  try {
+    supabaseAdmin = createClient(
+      process.env.SUPABASE_URL,
+      process.env.SUPABASE_SERVICE_KEY
+    );
+    console.log('🔐 Supabase admin client initialized');
+  } catch (e) {
+    console.warn('⚠️ Failed to initialize Supabase admin client:', e?.message || e);
+  }
+} else {
+  console.warn('ℹ️ SUPABASE_SERVICE_KEY not set. Using anon key for all queries. Some protected fields (like customer email) may not be accessible due to RLS.');
+}
 
 // JWT Secret
 const JWT_SECRET = process.env.JWT_SECRET || 'your-jwt-secret-key';
@@ -131,34 +147,50 @@ const requireAdminAuth = (req, res, next) => {
   next();
 };
 
+// Create Nodemailer transporter
+function createEmailTransporter() {
+  return nodemailer.createTransport({
+    service: process.env.EMAIL_SERVICE || 'gmail',
+    auth: {
+      user: process.env.EMAIL_USER,
+      pass: process.env.EMAIL_PASSWORD
+    }
+  });
+}
+
 // Email sending helper function
 async function sendAppointmentEmail(appointment, status) {
   try {
-    // Check if EmailJS credentials are configured
-    const serviceId = process.env.EMAILJS_SERVICE_ID;
-    const privateKey = process.env.EMAILJS_PRIVATE_KEY;
-    const publicKey = process.env.EMAILJS_PUBLIC_KEY;
+    console.log('🔔 Starting email send process...');
+    console.log('Status:', status);
+    console.log('Appointment ID:', appointment?.id);
     
-    if (!serviceId || !privateKey || !publicKey) {
-      console.warn('EmailJS not configured. Set EMAILJS_SERVICE_ID, EMAILJS_PRIVATE_KEY, and EMAILJS_PUBLIC_KEY in environment variables.');
-      return;
-    }
-
-    // Get the appropriate template ID based on status
-    const templateId = status === 'confirmed' 
-      ? process.env.EMAILJS_TEMPLATE_CONFIRMED 
-      : process.env.EMAILJS_TEMPLATE_CANCELLED;
-
-    if (!templateId) {
-      console.warn(`EmailJS template not configured for status: ${status}`);
+    // Check if email credentials are configured
+    const emailUser = process.env.EMAIL_USER;
+    const emailPassword = process.env.EMAIL_PASSWORD;
+    const emailFrom = process.env.EMAIL_FROM || emailUser;
+    
+    console.log('📧 Email Configuration Check:');
+    console.log('  Email User:', emailUser ? '✓ Set' : '✗ Missing');
+    console.log('  Email Password:', emailPassword ? '✓ Set' : '✗ Missing');
+    console.log('  Email Service:', process.env.EMAIL_SERVICE || 'gmail (default)');
+    
+    if (!emailUser || !emailPassword) {
+      console.warn('❌ Email not configured. Set EMAIL_USER and EMAIL_PASSWORD in environment variables.');
       return;
     }
 
     const customerEmail = appointment.customers?.email;
     const customerName = appointment.customers?.name || 'Valued Customer';
     
+    console.log('👤 Customer Info:');
+    console.log('  Name:', customerName);
+    console.log('  Email:', customerEmail || '✗ Missing');
+    console.log('  📧 Will send TO:', customerEmail);
+    console.log('  📤 Will send FROM:', emailFrom);
+    
     if (!customerEmail) {
-      console.warn('Customer email not available');
+      console.warn('❌ Customer email not available');
       return;
     }
 
@@ -166,42 +198,132 @@ async function sendAppointmentEmail(appointment, status) {
     const appointmentDate = new Date(appointment.appointment_date);
     const formattedDate = appointmentDate.toLocaleDateString('en-US', { 
       year: 'numeric', 
-      month: 'short', 
+      month: 'long', 
       day: 'numeric' 
     });
 
-    // Prepare email template parameters
-    const templateParams = {
-      to_email: customerEmail,
-      to_name: customerName,
-      business_name: appointment.businesses?.name || 'Our Business',
-      service_name: appointment.services?.name || 'Service',
-      stylist_name: appointment.stylists?.name || 'Stylist',
-      appointment_date: formattedDate,
-      appointment_time: appointment.appointment_time,
-      appointment_status: status,
-      status_message: getStatusMessage(status),
-      business_phone: appointment.businesses?.phone || '',
-      business_address: appointment.businesses?.address || '',
-      service_duration: appointment.services?.duration || 'N/A',
-      service_price: appointment.services?.price || 'N/A'
+    const businessName = appointment.businesses?.business_name || 'Our Business';
+    const serviceName = appointment.services?.name || 'Service';
+    const stylistName = appointment.stylists?.name || 'Stylist';
+    const appointmentTime = appointment.appointment_time;
+    const businessPhone = appointment.businesses?.phone || '';
+
+    console.log('📋 Appointment Details:');
+    console.log('  Business:', businessName);
+    console.log('  Service:', serviceName);
+    console.log('  Stylist:', stylistName);
+    console.log('  Date:', formattedDate);
+    console.log('  Time:', appointmentTime);
+
+    // Create email subject and body based on status
+    const statusMessage = getStatusMessage(status);
+    const subject = status === 'confirmed' 
+      ? `✓ Appointment Confirmed - ${businessName}`
+      : `✗ Appointment Cancelled - ${businessName}`;
+
+    const htmlBody = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <style>
+          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+          .header { background: ${status === 'confirmed' ? '#4CAF50' : '#f44336'}; color: white; padding: 20px; text-align: center; border-radius: 5px 5px 0 0; }
+          .content { background: #f9f9f9; padding: 30px; border: 1px solid #ddd; border-top: none; }
+          .details { background: white; padding: 20px; margin: 20px 0; border-radius: 5px; border-left: 4px solid ${status === 'confirmed' ? '#4CAF50' : '#f44336'}; }
+          .detail-row { margin: 10px 0; }
+          .label { font-weight: bold; color: #555; }
+          .footer { text-align: center; padding: 20px; color: #777; font-size: 12px; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h1>${status === 'confirmed' ? '✓' : '✗'} Appointment ${status === 'confirmed' ? 'Confirmed' : 'Cancelled'}</h1>
+          </div>
+          <div class="content">
+            <p>Dear ${customerName},</p>
+            <p>${statusMessage}</p>
+            
+            <div class="details">
+              <h3>Appointment Details</h3>
+              <div class="detail-row"><span class="label">Business:</span> ${businessName}</div>
+              <div class="detail-row"><span class="label">Service:</span> ${serviceName}</div>
+              <div class="detail-row"><span class="label">Stylist:</span> ${stylistName}</div>
+              <div class="detail-row"><span class="label">Date:</span> ${formattedDate}</div>
+              <div class="detail-row"><span class="label">Time:</span> ${appointmentTime}</div>
+              ${businessPhone ? `<div class="detail-row"><span class="label">Contact:</span> ${businessPhone}</div>` : ''}
+            </div>
+            
+            ${status === 'confirmed' ? '<p>We look forward to seeing you!</p>' : '<p>If you have any questions, please contact us.</p>'}
+            
+            <p>Best regards,<br>${businessName}</p>
+          </div>
+          <div class="footer">
+            <p>This is an automated message. Please do not reply to this email.</p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+
+    const textBody = `
+Dear ${customerName},
+
+${statusMessage}
+
+Appointment Details:
+- Business: ${businessName}
+- Service: ${serviceName}
+- Stylist: ${stylistName}
+- Date: ${formattedDate}
+- Time: ${appointmentTime}
+${businessPhone ? `- Contact: ${businessPhone}` : ''}
+
+${status === 'confirmed' ? 'We look forward to seeing you!' : 'If you have any questions, please contact us.'}
+
+Best regards,
+${businessName}
+
+---
+This is an automated message. Please do not reply to this email.
+    `;
+
+    console.log('📤 Sending email...');
+    console.log('  To:', customerEmail);
+    console.log('  From:', emailFrom);
+    console.log('  Subject:', subject);
+
+    // Create transporter and send email
+    const transporter = createEmailTransporter();
+    const mailOptions = {
+      from: `"${businessName}" <${emailFrom}>`,
+      to: customerEmail,
+      subject: subject,
+      text: textBody,
+      html: htmlBody
     };
 
-    // Send email using EmailJS
-    const response = await emailjs.send(
-      serviceId,
-      templateId,
-      templateParams,
-      {
-        publicKey: publicKey,
-        privateKey: privateKey,
-      }
-    );
+    console.log('📬 Final mail options:', {
+      from: mailOptions.from,
+      to: mailOptions.to,
+      subject: mailOptions.subject
+    });
 
-    console.log('Email sent successfully:', response);
-    return response;
+    const info = await transporter.sendMail(mailOptions);
+
+    console.log('✅ Email sent successfully!');
+    console.log('📨 Sent to:', customerEmail);
+    console.log('Message ID:', info.messageId);
+    console.log('Response:', info.response);
+    return info;
   } catch (error) {
-    console.error('Error sending email:', error);
+    console.error('❌ Error sending email:', error);
+    console.error('Error details:', {
+      message: error.message,
+      code: error.code,
+      response: error.response
+    });
     throw error;
   }
 }
@@ -1139,10 +1261,20 @@ app.put('/api/business/appointments/:id/status', authenticateToken, requireBusin
 
     if (error) throw error;
 
+    console.log(`📝 Appointment status updated to: ${sanitizedStatus}`);
+    console.log(`🔍 Checking if email notification needed...`);
+    console.log(`   Status is 'confirmed'? ${sanitizedStatus === 'confirmed'}`);
+    console.log(`   Status is 'cancelled'? ${sanitizedStatus === 'cancelled'}`);
+
     // Send email notification for confirmed or cancelled appointments
     if (sanitizedStatus === 'confirmed' || sanitizedStatus === 'cancelled') {
+      console.log('🔔 ✅ YES - Status requires email notification, fetching full appointment details...');
+      console.log('   Using database client:', supabaseAdmin ? 'ADMIN (service role)' : 'ANON (public)');
+      
       // Fetch full appointment details with related data
-      const { data: fullAppointment } = await supabase
+      // Use admin client if available to ensure access to protected fields like customers.email
+      const dbClient = supabaseAdmin || supabase;
+      const { data: fullAppointment, error: fetchError } = await dbClient
         .from('appointments')
         .select(`
           *,
@@ -1154,13 +1286,48 @@ app.put('/api/business/appointments/:id/status', authenticateToken, requireBusin
         .eq('id', appointmentId)
         .single();
 
+      if (fetchError) {
+        console.error('❌ Error fetching full appointment:', fetchError);
+      } else {
+        console.log('✓ Full appointment data fetched');
+        console.log('📋 Appointment ID:', fullAppointment?.id);
+        console.log('👤 Customer data:', JSON.stringify(fullAppointment?.customers, null, 2));
+        console.log('📧 Customer email:', fullAppointment?.customers?.email || '❌ MISSING');
+      }
+
       if (fullAppointment && fullAppointment.customers?.email) {
+        console.log('✅ Customer email found! Triggering email send for status:', sanitizedStatus);
         // Send email asynchronously (don't wait for it to complete)
         sendAppointmentEmail(fullAppointment, sanitizedStatus).catch(err => {
-          console.error('Email sending failed:', err);
+          console.error('❌ Email sending failed:', err);
           // Don't throw error - email failure shouldn't prevent status update
         });
+      } else {
+        console.warn('⚠️ Cannot send email: Missing appointment data or customer email');
+        console.warn('  fullAppointment exists?', !!fullAppointment);
+        console.warn('  customers object exists?', !!fullAppointment?.customers);
+        console.warn('  email exists?', !!fullAppointment?.customers?.email);
+        // Fallback: notify business email so we can validate end-to-end delivery
+        try {
+          const businessEmail = fullAppointment?.businesses?.email || process.env.EMAIL_FROM || process.env.EMAIL_USER;
+          if (businessEmail) {
+            console.log('📨 Fallback: sending notification to business email:', businessEmail);
+            const fallback = {
+              ...fullAppointment,
+              customers: { name: 'Customer', email: businessEmail },
+            };
+            sendAppointmentEmail(fallback, sanitizedStatus).catch(err => {
+              console.error('❌ Fallback email sending failed:', err?.message || err);
+            });
+          } else {
+            console.warn('⚠️ No fallback business email available. Skipping email send.');
+          }
+        } catch (e) {
+          console.warn('⚠️ Fallback email attempt threw an error:', e?.message || e);
+        }
       }
+    } else {
+      console.log(`ℹ️ Status '${sanitizedStatus}' does not require email notification`);
     }
 
     res.json({ success: true, appointment });
@@ -1169,6 +1336,13 @@ app.put('/api/business/appointments/:id/status', authenticateToken, requireBusin
     console.error('Update appointment error:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
+});
+
+// Temporary compatibility route to catch legacy front-end typo '/api/businesss/...'
+app.put('/api/businesss/appointments/:id/status', authenticateToken, requireBusinessAuth, async (req, res) => {
+  console.log('⚠️ Legacy route /api/businesss/ hit. Redirecting internally to correct handler.');
+  req.url = req.url.replace('/api/businesss', '/api/business');
+  return app._router.handle(req, res, require('finalhandler')(req, res));
 });
 
 // Get Business Hours
@@ -1373,12 +1547,13 @@ app.post('/api/customer/book-appointment', async (req, res) => {
       return res.status(429).json({ error: 'Too many booking attempts. Please try again later.' });
     }
 
-    const { businessId, customerName, customerPhone, serviceId, stylistId, appointmentDate, appointmentTime, specialRequests } = req.body;
+    const { businessId, customerName, customerEmail, customerPhone, serviceId, stylistId, appointmentDate, appointmentTime, specialRequests } = req.body;
 
     // Validation
     const errors = [];
     errors.push(validateRequired(businessId, 'Business ID'));
     errors.push(validateRequired(customerName, 'Customer name'));
+    errors.push(validateRequired(customerEmail, 'Customer email'));
     errors.push(validateRequired(customerPhone, 'Phone number'));
     errors.push(validateRequired(serviceId, 'Service'));
     errors.push(validateRequired(stylistId, 'Stylist'));
@@ -1392,6 +1567,7 @@ app.post('/api/customer/book-appointment', async (req, res) => {
 
     // Sanitize inputs
     const sanitizedCustomerName = sanitizeString(customerName);
+    const sanitizedCustomerEmail = sanitizeString(customerEmail);
     const sanitizedCustomerPhone = sanitizeString(customerPhone);
     const sanitizedSpecialRequests = specialRequests ? sanitizeString(specialRequests) : '';
 
@@ -1399,6 +1575,11 @@ app.post('/api/customer/book-appointment', async (req, res) => {
     const lengthError = validateLength(sanitizedCustomerName, 'Customer name', 2, 100);
     if (lengthError) {
       return res.status(400).json({ error: lengthError });
+    }
+
+    // Email validation
+    if (!validateEmail(sanitizedCustomerEmail)) {
+      return res.status(400).json({ error: 'Invalid email address format' });
     }
 
     // Phone validation
@@ -1525,7 +1706,7 @@ app.post('/api/customer/book-appointment', async (req, res) => {
     const { data: existingCustomer } = await supabase
       .from('customers')
       .select('id')
-      .eq('phone', sanitizedCustomerPhone)
+      .eq('email', sanitizedCustomerEmail)
       .single();
 
     if (!existingCustomer) {
@@ -1534,12 +1715,22 @@ app.post('/api/customer/book-appointment', async (req, res) => {
         .insert([{
           id: customerId,
           name: sanitizedCustomerName,
+          email: sanitizedCustomerEmail,
           phone: sanitizedCustomerPhone
         }]);
 
       if (customerError) throw customerError;
     } else {
       customerId = existingCustomer.id;
+      
+      // Update existing customer info
+      await supabase
+        .from('customers')
+        .update({
+          name: sanitizedCustomerName,
+          phone: sanitizedCustomerPhone
+        })
+        .eq('id', customerId);
     }
 
     // Create appointment

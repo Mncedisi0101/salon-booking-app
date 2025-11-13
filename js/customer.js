@@ -358,6 +358,7 @@ class CustomerBooking {
             const bookingData = {
                 businessId: this.currentBusiness.id,
                 customerName: customerData.name,
+                customerEmail: customerData.email,
                 customerPhone: customerData.phone,
                 serviceId: this.selectedService.id,
                 stylistId: this.selectedStylist.id,
@@ -543,6 +544,7 @@ class CustomerBooking {
                 
                 const customerData = {
                     name: document.getElementById('customerName').value,
+                    email: document.getElementById('customerEmail').value,
                     phone: document.getElementById('customerPhone').value,
                     specialRequests: document.getElementById('specialRequests').value
                 };
@@ -554,10 +556,14 @@ class CustomerBooking {
         // Pre-fill customer info if logged in
         if (this.authManager.isCustomer() && this.authManager.currentUser) {
             const customerNameInput = document.getElementById('customerName');
+            const customerEmailInput = document.getElementById('customerEmail');
             const customerPhoneInput = document.getElementById('customerPhone');
             
             if (customerNameInput && this.authManager.currentUser.name) {
                 customerNameInput.value = this.authManager.currentUser.name;
+            }
+            if (customerEmailInput && this.authManager.currentUser.email) {
+                customerEmailInput.value = this.authManager.currentUser.email;
             }
             if (customerPhoneInput && this.authManager.currentUser.phone) {
                 customerPhoneInput.value = this.authManager.currentUser.phone;
