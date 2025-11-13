@@ -834,6 +834,42 @@ function scrollToFeatures() {
     }
 }
 
+// Toggle mobile navigation
+function toggleMobileNav() {
+    const navActions = document.getElementById('navActions');
+    const navToggle = document.getElementById('navToggle');
+    
+    if (navActions) {
+        navActions.classList.toggle('active');
+        
+        // Update icon
+        const icon = navToggle.querySelector('i');
+        if (navActions.classList.contains('active')) {
+            icon.classList.remove('fa-bars');
+            icon.classList.add('fa-times');
+        } else {
+            icon.classList.remove('fa-times');
+            icon.classList.add('fa-bars');
+        }
+    }
+}
+
+// Close mobile nav when clicking outside
+document.addEventListener('click', (e) => {
+    const navActions = document.getElementById('navActions');
+    const navToggle = document.getElementById('navToggle');
+    const navContainer = document.querySelector('.nav-container');
+    
+    if (navActions && navActions.classList.contains('active')) {
+        if (!navContainer.contains(e.target)) {
+            navActions.classList.remove('active');
+            const icon = navToggle.querySelector('i');
+            icon.classList.remove('fa-times');
+            icon.classList.add('fa-bars');
+        }
+    }
+});
+
 // Add modal animation styles
 function addModalStyles() {
     if (!document.getElementById('modal-styles')) {
@@ -935,6 +971,7 @@ document.addEventListener('DOMContentLoaded', () => {
 window.openModal = openModal;
 window.closeModal = closeModal;
 window.scrollToFeatures = scrollToFeatures;
+window.toggleMobileNav = toggleMobileNav;
 window.switchToLogin = switchToLogin;
 window.switchToRegister = switchToRegister;
 window.openCustomerAuth = openCustomerAuth;

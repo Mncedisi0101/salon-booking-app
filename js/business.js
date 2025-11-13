@@ -416,6 +416,9 @@ class BusinessDashboard {
                             <button class="btn btn-sm view-appointment" style="background-color:#6610f2;color:#fff;border:none;" data-id="${appointment.id}" title="View Details">
                                 <i class="fas fa-eye"></i>
                             </button>
+                            <button class="btn btn-sm delete-appointment" style="background-color:#6c757d;color:#fff;border:none;" data-id="${appointment.id}" title="Delete">
+                                <i class="fas fa-trash"></i>
+                            </button>
                         </div>
                 </td>
             `;
@@ -456,6 +459,16 @@ class BusinessDashboard {
             });
         });
         
+        // Delete appointment buttons
+        document.querySelectorAll('.delete-appointment').forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+                const id = e.currentTarget.getAttribute('data-id');
+                if (confirm('Are you sure you want to permanently delete this appointment? This action cannot be undone.')) {
+                    await this.deleteAppointment(id);
+                }
+            });
+        });
+        
         // View appointment buttons
         document.querySelectorAll('.view-appointment').forEach(btn => {
             btn.addEventListener('click', (e) => {
@@ -481,7 +494,7 @@ class BusinessDashboard {
             if (data.success) {
                 // Show success message with email notification info
                 let message = `Appointment ${status} successfully!`;
-                if (status === 'confirmed' || status === 'cancelled') {
+                if (status === 'confirmed' || status === 'cancelled' || status === 'completed') {
                     message += '\n\nAn email notification has been sent to the customer.';
                 }
                 alert(message);
@@ -492,6 +505,27 @@ class BusinessDashboard {
         } catch (error) {
             console.error('Error updating appointment:', error);
             alert('Failed to update appointment');
+        }
+    }
+
+    async deleteAppointment(appointmentId) {
+        try {
+            const response = await fetch(`/api/business/appointments/${appointmentId}`, {
+                method: 'DELETE',
+                headers: this.authManager.getAuthHeaders()
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                alert('Appointment deleted successfully!');
+                this.loadAppointments();
+            } else {
+                alert(data.error || 'Failed to delete appointment');
+            }
+        } catch (error) {
+            console.error('Error deleting appointment:', error);
+            alert('Failed to delete appointment');
         }
     }
 

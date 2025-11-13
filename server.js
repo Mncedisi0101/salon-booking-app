@@ -219,7 +219,27 @@ async function sendAppointmentEmail(appointment, status) {
     const statusMessage = getStatusMessage(status);
     const subject = status === 'confirmed' 
       ? `✓ Appointment Confirmed - ${businessName}`
-      : `✗ Appointment Cancelled - ${businessName}`;
+      : status === 'cancelled'
+      ? `✗ Appointment Cancelled - ${businessName}`
+      : `✓ Thank You - ${businessName}`;
+
+    const getHeaderColor = (status) => {
+      if (status === 'confirmed') return '#4CAF50';
+      if (status === 'cancelled') return '#f44336';
+      return '#2196F3'; // Blue for completed
+    };
+
+    const getHeaderIcon = (status) => {
+      if (status === 'confirmed') return '✓';
+      if (status === 'cancelled') return '✗';
+      return '★'; // Star for completed
+    };
+
+    const getHeaderTitle = (status) => {
+      if (status === 'confirmed') return 'Appointment Confirmed';
+      if (status === 'cancelled') return 'Appointment Cancelled';
+      return 'Thank You!';
+    };
 
     const htmlBody = `
       <!DOCTYPE html>
@@ -228,9 +248,9 @@ async function sendAppointmentEmail(appointment, status) {
         <style>
           body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
           .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-          .header { background: ${status === 'confirmed' ? '#4CAF50' : '#f44336'}; color: white; padding: 20px; text-align: center; border-radius: 5px 5px 0 0; }
+          .header { background: ${getHeaderColor(status)}; color: white; padding: 20px; text-align: center; border-radius: 5px 5px 0 0; }
           .content { background: #f9f9f9; padding: 30px; border: 1px solid #ddd; border-top: none; }
-          .details { background: white; padding: 20px; margin: 20px 0; border-radius: 5px; border-left: 4px solid ${status === 'confirmed' ? '#4CAF50' : '#f44336'}; }
+          .details { background: white; padding: 20px; margin: 20px 0; border-radius: 5px; border-left: 4px solid ${getHeaderColor(status)}; }
           .detail-row { margin: 10px 0; }
           .label { font-weight: bold; color: #555; }
           .footer { text-align: center; padding: 20px; color: #777; font-size: 12px; }
@@ -239,7 +259,7 @@ async function sendAppointmentEmail(appointment, status) {
       <body>
         <div class="container">
           <div class="header">
-            <h1>${status === 'confirmed' ? '✓' : '✗'} Appointment ${status === 'confirmed' ? 'Confirmed' : 'Cancelled'}</h1>
+            <h1>${getHeaderIcon(status)} ${getHeaderTitle(status)}</h1>
           </div>
           <div class="content">
             <p>Dear ${customerName},</p>
@@ -255,7 +275,11 @@ async function sendAppointmentEmail(appointment, status) {
               ${businessPhone ? `<div class="detail-row"><span class="label">Contact:</span> ${businessPhone}</div>` : ''}
             </div>
             
-            ${status === 'confirmed' ? '<p>We look forward to seeing you!</p>' : '<p>If you have any questions, please contact us.</p>'}
+            ${status === 'confirmed' 
+              ? '<p>We look forward to seeing you!</p>' 
+              : status === 'cancelled'
+              ? '<p>If you have any questions, please contact us.</p>'
+              : '<p>Thank you for choosing us! We hope you enjoyed your experience and look forward to serving you again soon.</p>'}
             
             <p>Best regards,<br>${businessName}</p>
           </div>
@@ -280,7 +304,11 @@ Appointment Details:
 - Time: ${appointmentTime}
 ${businessPhone ? `- Contact: ${businessPhone}` : ''}
 
-${status === 'confirmed' ? 'We look forward to seeing you!' : 'If you have any questions, please contact us.'}
+${status === 'confirmed' 
+  ? 'We look forward to seeing you!' 
+  : status === 'cancelled'
+  ? 'If you have any questions, please contact us.'
+  : 'Thank you for choosing us! We hope you enjoyed your experience and look forward to serving you again soon.'}
 
 Best regards,
 ${businessName}
@@ -335,6 +363,8 @@ function getStatusMessage(status) {
       return 'Your appointment has been confirmed! We look forward to seeing you.';
     case 'cancelled':
       return 'Your appointment has been cancelled. We apologize for any inconvenience.';
+    case 'completed':
+      return 'Thank you for visiting us! Your appointment has been completed. We hope you had a wonderful experience and we look forward to serving you again.';
     default:
       return `Your appointment status has been updated to ${status}.`;
   }
@@ -1265,9 +1295,10 @@ app.put('/api/business/appointments/:id/status', authenticateToken, requireBusin
     console.log(`🔍 Checking if email notification needed...`);
     console.log(`   Status is 'confirmed'? ${sanitizedStatus === 'confirmed'}`);
     console.log(`   Status is 'cancelled'? ${sanitizedStatus === 'cancelled'}`);
+    console.log(`   Status is 'completed'? ${sanitizedStatus === 'completed'}`);
 
-    // Send email notification for confirmed or cancelled appointments
-    if (sanitizedStatus === 'confirmed' || sanitizedStatus === 'cancelled') {
+    // Send email notification for confirmed, cancelled, or completed appointments
+    if (sanitizedStatus === 'confirmed' || sanitizedStatus === 'cancelled' || sanitizedStatus === 'completed') {
       console.log('🔔 ✅ YES - Status requires email notification, fetching full appointment details...');
       console.log('   Using database client:', supabaseAdmin ? 'ADMIN (service role)' : 'ANON (public)');
       
@@ -1343,6 +1374,44 @@ app.put('/api/businesss/appointments/:id/status', authenticateToken, requireBusi
   console.log('⚠️ Legacy route /api/businesss/ hit. Redirecting internally to correct handler.');
   req.url = req.url.replace('/api/businesss', '/api/business');
   return app._router.handle(req, res, require('finalhandler')(req, res));
+});
+
+// Delete Appointment
+app.delete('/api/business/appointments/:id', authenticateToken, requireBusinessAuth, async (req, res) => {
+  try {
+    const businessId = req.user.id;
+    const appointmentId = req.params.id;
+
+    console.log(`🗑️ Deleting appointment ${appointmentId} for business ${businessId}`);
+
+    // First verify the appointment belongs to this business
+    const { data: appointment, error: fetchError } = await supabase
+      .from('appointments')
+      .select('id')
+      .eq('id', appointmentId)
+      .eq('business_id', businessId)
+      .single();
+
+    if (fetchError || !appointment) {
+      return res.status(404).json({ error: 'Appointment not found or does not belong to your business' });
+    }
+
+    // Delete the appointment
+    const { error: deleteError } = await supabase
+      .from('appointments')
+      .delete()
+      .eq('id', appointmentId)
+      .eq('business_id', businessId);
+
+    if (deleteError) throw deleteError;
+
+    console.log(`✅ Appointment ${appointmentId} deleted successfully`);
+    res.json({ success: true, message: 'Appointment deleted successfully' });
+
+  } catch (error) {
+    console.error('Delete appointment error:', error);
+    res.status(500).json({ error: 'Failed to delete appointment' });
+  }
 });
 
 // Get Business Hours

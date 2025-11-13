@@ -2,7 +2,9 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
+    <meta name="theme-color" content="#034078">
+    <meta name="description" content="SalonPro - Professional Salon Booking System for modern businesses">
     <title>SalonPro - Professional Salon Booking System</title>
     <link rel="stylesheet" href="/styles/main.css">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
@@ -15,15 +17,18 @@
                 <i class="fas fa-scissors"></i>
                 <span>SalonPro</span>
             </div>
-            <div class="nav-actions">
+            <button class="nav-toggle" id="navToggle" onclick="toggleMobileNav()">
+                <i class="fas fa-bars"></i>
+            </button>
+            <div class="nav-actions" id="navActions">
                 <button class="btn btn-outline" onclick="openModal('businessLoginModal')">
-                    <i class="fas fa-sign-in-alt"></i> Business Login
+                    <i class="fas fa-sign-in-alt"></i> <span>Business Login</span>
                 </button>
                 <button class="btn btn-outline" onclick="openModal('businessRegisterModal')">
-                    <i class="fas fa-store"></i> Register Business
+                    <i class="fas fa-store"></i> <span>Register Business</span>
                 </button>
                 <button class="btn btn-primary" onclick="openModal('adminLoginModal')">
-                    <i class="fas fa-user-shield"></i> Admin Login
+                    <i class="fas fa-user-shield"></i> <span>Admin Login</span>
                 </button>
             </div>
         </div>
