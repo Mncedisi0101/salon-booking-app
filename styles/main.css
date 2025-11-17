@@ -531,13 +531,13 @@ h4 { font-size: var(--font-size-xl); }
     content: '';
     display: block;
     position: absolute;
-    top: 2px;
-    left: 6px;
-    width: 4px;
-    height: 8px;
+    top: 50%;
+    left: 50%;
+    width: 5px;
+    height: 10px;
     border: solid white;
-    border-width: 0 2px 2px 0;
-    transform: rotate(45deg);
+    border-width: 0 2.5px 2.5px 0;
+    transform: translate(-50%, -60%) rotate(45deg);
 }
 
 .checkbox-group input[type="checkbox"]:focus {
@@ -872,10 +872,12 @@ h4 { font-size: var(--font-size-xl); }
     }
     
     .checkbox-group input[type="checkbox"]:checked::after {
-        top: 1px;
-        left: 5px;
+        top: 50%;
+        left: 50%;
         width: 4px;
-        height: 7px;
+        height: 8px;
+        border-width: 0 2px 2px 0;
+        transform: translate(-50%, -60%) rotate(45deg);
     }
     
     .section-title {
@@ -911,10 +913,12 @@ h4 { font-size: var(--font-size-xl); }
     }
     
     .checkbox-group input[type="checkbox"]:checked::after {
-        top: 1px;
-        left: 4px;
+        top: 50%;
+        left: 50%;
         width: 3px;
         height: 6px;
+        border-width: 0 1.5px 1.5px 0;
+        transform: translate(-50%, -60%) rotate(45deg);
     }
     
     .modal-header h2 {
