@@ -168,7 +168,7 @@ class CustomerBooking {
         services.forEach(service => {
             const option = document.createElement('option');
             option.value = service.id;
-            option.textContent = `${service.name} - $${service.price} (${service.duration} mins)`;
+            option.textContent = `${service.name} - R${service.price} (${service.duration} mins)`;
             option.dataset.name = service.name;
             option.dataset.price = service.price;
             option.dataset.duration = service.duration;
@@ -195,7 +195,7 @@ class CustomerBooking {
         if (selectedServicesDiv && selectedServiceDetails) {
             selectedServiceDetails.innerHTML = `
                 <p><strong>${this.selectedService.name}</strong></p>
-                <p>Price: $${this.selectedService.price}</p>
+                <p>Price: R${this.selectedService.price}</p>
                 <p>Duration: ${this.selectedService.duration} minutes</p>
             `;
             selectedServicesDiv.style.display = 'block';
@@ -204,7 +204,7 @@ class CustomerBooking {
         // Update summary
         document.getElementById('summaryService').textContent = this.selectedService.name;
         document.getElementById('summaryDuration').textContent = `${this.selectedService.duration} minutes`;
-        document.getElementById('summaryTotal').textContent = `$${this.selectedService.price}`;
+        document.getElementById('summaryTotal').textContent = `R${this.selectedService.price}`;
 
         // Enable next button
         const nextButton = document.getElementById('nextToStylist');
@@ -480,7 +480,7 @@ class CustomerBooking {
                     <p><strong>Date:</strong> ${this.selectedDate}</p>
                     <p><strong>Time:</strong> ${this.selectedTime}</p>
                     <p><strong>Duration:</strong> ${this.selectedService.duration} minutes</p>
-                    <p><strong>Total:</strong> $${this.selectedService.price}</p>
+                    <p><strong>Total:</strong> R${this.selectedService.price}</p>
                 </div>
             </div>
         `;
@@ -518,7 +518,7 @@ class CustomerBooking {
         document.getElementById('summaryStylist').textContent = '-';
         document.getElementById('summaryDateTime').textContent = '-';
         document.getElementById('summaryDuration').textContent = '-';
-        document.getElementById('summaryTotal').textContent = '$0.00';
+        document.getElementById('summaryTotal').textContent = 'R0.00';
         
         // Disable next buttons
         document.getElementById('nextToStylist').disabled = true;

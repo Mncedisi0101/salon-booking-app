@@ -96,7 +96,7 @@ class BusinessDashboard {
             const row = document.createElement('tr');
             row.innerHTML = `
                 <td>${service.name}</td>
-                <td>$${service.price}</td>
+                <td>R${service.price}</td>
                 <td>${service.duration} mins</td>
                 <td>${service.category}</td>
                 <td>${service.is_available ? 'Yes' : 'No'}</td>
@@ -653,7 +653,7 @@ class BusinessDashboard {
                 <p><strong>Customer:</strong> ${customerName}</p>
                 <p><strong>Phone:</strong> ${customerPhone}</p>
                 <p><strong>Service:</strong> ${serviceName}</p>
-                <p><strong>Price:</strong> $${servicePrice}</p>
+                <p><strong>Price:</strong> R${servicePrice}</p>
                 <p><strong>Duration:</strong> ${serviceDuration} minutes</p>
                 <p><strong>Stylist:</strong> ${stylistName}</p>
                 <p><strong>Date:</strong> ${this.formatDate(appointment.appointment_date)}</p>

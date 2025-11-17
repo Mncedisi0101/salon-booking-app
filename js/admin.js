@@ -65,7 +65,7 @@ class AdminDashboard {
             const revenue = appointments
                 .filter(apt => apt.status === 'completed')
                 .reduce((sum, apt) => sum + (parseFloat(apt.services?.price) || 0), 0);
-            document.getElementById('totalRevenue').textContent = `$${revenue.toFixed(2)}`;
+            document.getElementById('totalRevenue').textContent = `R${revenue.toFixed(2)}`;
 
         } catch (error) {
             console.error('Error loading dashboard stats:', error);
