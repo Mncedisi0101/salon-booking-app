@@ -654,17 +654,17 @@ class BusinessDashboard {
             const openTime = h.open_time || '09:00';
             const closeTime = h.close_time || '17:00';
             const isClosed = h.is_closed || false;
-            
             html += `
                 <tr data-day="${d}">
                     <td>${dayNames[d]}</td>
                     <td><input type="time" class="form-control open-time" value="${openTime}" ${isClosed ? 'disabled' : ''}></td>
                     <td><input type="time" class="form-control close-time" value="${closeTime}" ${isClosed ? 'disabled' : ''}></td>
                     <td>
-                        <div class="form-check form-switch">
+                        <div class="form-check form-switch d-inline-block">
                             <input class="form-check-input is-closed" type="checkbox" ${isClosed ? 'checked' : ''}>
                             <label class="form-check-label">Closed</label>
                         </div>
+                        <button class="btn btn-sm btn-success ms-2 save-day-btn" type="button">Save</button>
                     </td>
                 </tr>`;
         }
@@ -677,11 +677,49 @@ class BusinessDashboard {
             const closedInput = row.querySelector('.is-closed');
             const openEl = row.querySelector('.open-time');
             const closeEl = row.querySelector('.close-time');
-            if (!closedInput || !openEl || !closeEl) return;
+            const saveDayBtn = row.querySelector('.save-day-btn');
+            if (!closedInput || !openEl || !closeEl || !saveDayBtn) return;
             closedInput.addEventListener('change', () => {
                 const disabled = closedInput.checked;
                 openEl.disabled = disabled;
                 closeEl.disabled = disabled;
+            });
+            saveDayBtn.addEventListener('click', async () => {
+                const day = parseInt(row.getAttribute('data-day'), 10);
+                const is_closed = closedInput.checked;
+                let open_time = openEl.value;
+                let close_time = closeEl.value;
+                if (!open_time || open_time.trim() === '') open_time = '09:00';
+                if (!close_time || close_time.trim() === '') close_time = '17:00';
+                const timeRegex = /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/;
+                if (!is_closed) {
+                    if (!timeRegex.test(open_time)) {
+                        alert(`Invalid open time format for day ${day}`);
+                        return;
+                    }
+                    if (!timeRegex.test(close_time)) {
+                        alert(`Invalid close time format for day ${day}`);
+                        return;
+                    }
+                }
+                saveDayBtn.disabled = true;
+                try {
+                    const res = await fetch('/api/business/hours', {
+                        method: 'PUT',
+                        headers: this.authManager.getAuthHeaders(),
+                        body: JSON.stringify({ day, open_time, close_time, is_closed })
+                    });
+                    const data = await res.json();
+                    if (data.success) {
+                        alert(data.message || 'Business hours updated successfully!');
+                        await this.loadBusinessHours();
+                    } else {
+                        alert(data.error || 'Failed to update business hours');
+                    }
+                } catch (e) {
+                    alert(e.message || 'Failed to update business hours');
+                }
+                saveDayBtn.disabled = false;
             });
         });
 
@@ -732,7 +770,7 @@ class BusinessDashboard {
             });
             const data = await res.json();
             if (data.success) {
-                alert('Business hours saved successfully!');
+                alert(data.message || 'Business hours saved successfully!');
                 await this.loadBusinessHours();
             } else {
                 alert(data.error || 'Failed to save business hours');

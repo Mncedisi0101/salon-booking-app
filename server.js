@@ -1446,64 +1446,42 @@ app.get('/api/business/hours', authenticateToken, requireBusinessAuth, async (re
 app.put('/api/business/hours', authenticateToken, requireBusinessAuth, async (req, res) => {
   try {
     const businessId = req.user.id;
-    const { hours } = req.body;
-
-    // Validation
-    if (!hours || !Array.isArray(hours) || hours.length === 0) {
-      return res.status(400).json({ error: 'Business hours data is required' });
-    }
-
-    // Validate time format (HH:MM)
+    const { hours, day, open_time, close_time, is_closed } = req.body;
     const timeRegex = /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/;
 
-    for (const hour of hours) {
-      // Validate required fields
-      if (hour.day === undefined) {
-        return res.status(400).json({ error: 'Day is required for each hour entry' });
-      }
-
-      // Validate day (0-6)
-      const dayError = validateNumber(hour.day, 'Day', 0, 6);
+    // If updating a single day
+    if (typeof day !== 'undefined') {
+      const dayError = validateNumber(day, 'Day', 0, 6);
       if (dayError) {
         return res.status(400).json({ error: dayError });
       }
-
-      // Set defaults for time values
-      const openTime = hour.open_time || '09:00';
-      const closeTime = hour.close_time || '17:00';
-      const isClosed = hour.is_closed || false;
-
-      // Validate time format only if not closed
-      if (!isClosed) {
-        if (!timeRegex.test(openTime)) {
-          return res.status(400).json({ error: `Invalid open time format for day ${hour.day}. Expected HH:MM format.` });
+      if (!is_closed) {
+        if (!timeRegex.test(open_time)) {
+          return res.status(400).json({ error: `Invalid open time format for day ${day}. Expected HH:MM format.` });
         }
-        if (!timeRegex.test(closeTime)) {
-          return res.status(400).json({ error: `Invalid close time format for day ${hour.day}. Expected HH:MM format.` });
+        if (!timeRegex.test(close_time)) {
+          return res.status(400).json({ error: `Invalid close time format for day ${day}. Expected HH:MM format.` });
         }
       }
-
       // Check if entry exists
       const { data: existing } = await supabase
         .from('business_hours')
         .select('id')
         .eq('business_id', businessId)
-        .eq('day', hour.day)
+        .eq('day', day)
         .single();
-
       if (existing) {
         // Update existing entry
         const { error } = await supabase
           .from('business_hours')
           .update({
-            open_time: openTime,
-            close_time: closeTime,
-            is_closed: isClosed,
+            open_time: is_closed ? null : open_time,
+            close_time: is_closed ? null : close_time,
+            is_closed: !!is_closed,
             updated_at: new Date().toISOString()
           })
           .eq('business_id', businessId)
-          .eq('day', hour.day);
-
+          .eq('day', day);
         if (error) throw error;
       } else {
         // Create new entry
@@ -1511,18 +1489,72 @@ app.put('/api/business/hours', authenticateToken, requireBusinessAuth, async (re
           .from('business_hours')
           .insert({
             business_id: businessId,
-            day: hour.day,
-            open_time: openTime,
-            close_time: closeTime,
-            is_closed: isClosed
+            day,
+            open_time: is_closed ? null : open_time,
+            close_time: is_closed ? null : close_time,
+            is_closed: !!is_closed
           });
-
         if (error) throw error;
       }
+      return res.json({ success: true, message: 'Business hours updated successfully for selected day.' });
     }
 
-    res.json({ success: true, message: 'Business hours updated successfully' });
+    // If updating all days (bulk update)
+    if (Array.isArray(hours)) {
+      for (const hour of hours) {
+        if (hour.day === undefined) {
+          return res.status(400).json({ error: 'Day is required for each hour entry' });
+        }
+        const dayError = validateNumber(hour.day, 'Day', 0, 6);
+        if (dayError) {
+          return res.status(400).json({ error: dayError });
+        }
+        const openTime = hour.open_time || '09:00';
+        const closeTime = hour.close_time || '17:00';
+        const isClosed = hour.is_closed || false;
+        if (!isClosed) {
+          if (!timeRegex.test(openTime)) {
+            return res.status(400).json({ error: `Invalid open time format for day ${hour.day}. Expected HH:MM format.` });
+          }
+          if (!timeRegex.test(closeTime)) {
+            return res.status(400).json({ error: `Invalid close time format for day ${hour.day}. Expected HH:MM format.` });
+          }
+        }
+        const { data: existing } = await supabase
+          .from('business_hours')
+          .select('id')
+          .eq('business_id', businessId)
+          .eq('day', hour.day)
+          .single();
+        if (existing) {
+          const { error } = await supabase
+            .from('business_hours')
+            .update({
+              open_time: isClosed ? null : openTime,
+              close_time: isClosed ? null : closeTime,
+              is_closed: !!isClosed,
+              updated_at: new Date().toISOString()
+            })
+            .eq('business_id', businessId)
+            .eq('day', hour.day);
+          if (error) throw error;
+        } else {
+          const { error } = await supabase
+            .from('business_hours')
+            .insert({
+              business_id: businessId,
+              day: hour.day,
+              open_time: isClosed ? null : openTime,
+              close_time: isClosed ? null : closeTime,
+              is_closed: !!isClosed
+            });
+          if (error) throw error;
+        }
+      }
+      return res.json({ success: true, message: 'Business hours updated successfully.' });
+    }
 
+    return res.status(400).json({ error: 'Invalid request. Provide either hours array or day info.' });
   } catch (error) {
     console.error('Update hours error:', error);
     res.status(500).json({ error: 'Failed to update business hours' });
