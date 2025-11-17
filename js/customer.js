@@ -388,7 +388,16 @@ class CustomerBooking {
                 // Show confirmation
                 this.showConfirmation(data.appointment);
             } else {
-                alert(data.error || 'Failed to book appointment');
+                // Check if it's a time slot conflict error
+                if (data.error && data.error.includes('already booked')) {
+                    alert(data.error + '\n\nPlease select a different time slot. The available time slots have been refreshed.');
+                    // Refresh time slots to show current availability
+                    await this.loadAvailableTimes();
+                    // Go back to date/time selection step
+                    this.nextStep('dateStep');
+                } else {
+                    alert(data.error || 'Failed to book appointment');
+                }
                 console.error('Booking error:', data);
             }
         } catch (error) {

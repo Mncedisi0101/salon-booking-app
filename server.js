@@ -1651,13 +1651,14 @@ app.get('/api/customer/available-slots/:businessId', async (req, res) => {
       return res.json([]);
     }
 
-    // Get existing appointments for that day and stylist
+    // Get existing appointments for that day and SPECIFIC STYLIST
+    // This ensures each stylist's schedule is checked independently to prevent double-booking
     const { data: existingAppointments, error: appointmentsError } = await supabase
       .from('appointments')
       .select('appointment_time, duration')
       .eq('business_id', businessId)
       .eq('appointment_date', date)
-      .eq('stylist_id', stylistId)
+      .eq('stylist_id', stylistId) // CRITICAL: Filter by specific stylist to prevent conflicts
       .in('status', ['pending', 'confirmed']);
 
     if (appointmentsError) throw appointmentsError;
@@ -1817,7 +1818,7 @@ app.post('/api/customer/book-appointment', async (req, res) => {
       return res.status(400).json({ error: 'Appointment time is outside business hours' });
     }
 
-    // Check for conflicting appointments for this stylist
+    // Check for conflicting appointments for this stylist (CRITICAL: Prevents double-booking)
     const { data: conflictingAppointments, error: conflictError } = await supabase
       .from('appointments')
       .select('id, appointment_time, duration')
@@ -1826,23 +1827,29 @@ app.post('/api/customer/book-appointment', async (req, res) => {
       .eq('appointment_date', appointmentDate)
       .in('status', ['pending', 'confirmed']);
 
-    if (!conflictError && conflictingAppointments && conflictingAppointments.length > 0) {
-      // Check for time slot conflicts
-      const requestedStartTime = appointmentTime;
-      const [hours, minutes] = appointmentTime.split(':').map(Number);
-      const requestedEndMinutes = hours * 60 + minutes + service.duration;
-      const requestedEndTime = `${Math.floor(requestedEndMinutes / 60).toString().padStart(2, '0')}:${(requestedEndMinutes % 60).toString().padStart(2, '0')}`;
+    if (conflictError) {
+      console.error('Error checking for conflicts:', conflictError);
+      return res.status(500).json({ error: 'Failed to verify appointment availability' });
+    }
 
+    // Parse requested appointment time
+    const [hours, minutes] = appointmentTime.split(':').map(Number);
+    const requestedStartMinutes = hours * 60 + minutes;
+    const requestedEndMinutes = requestedStartMinutes + service.duration;
+
+    // Check for any time slot conflicts with existing appointments
+    if (conflictingAppointments && conflictingAppointments.length > 0) {
       for (const apt of conflictingAppointments) {
         const [aptHours, aptMinutes] = apt.appointment_time.split(':').map(Number);
         const aptStartMinutes = aptHours * 60 + aptMinutes;
         const aptEndMinutes = aptStartMinutes + (apt.duration || 30);
-
-        const requestedStartMinutes = hours * 60 + minutes;
         
-        // Check if times overlap
+        // Check if times overlap: new appointment overlaps with existing one
         if (requestedStartMinutes < aptEndMinutes && requestedEndMinutes > aptStartMinutes) {
-          return res.status(400).json({ error: 'This time slot is already booked' });
+          return res.status(400).json({ 
+            error: 'This stylist is already booked at this time. Please select a different time slot.',
+            conflictingTime: apt.appointment_time
+          });
         }
       }
     }
