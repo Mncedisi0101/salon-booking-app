@@ -1447,20 +1447,16 @@ app.put('/api/business/hours', authenticateToken, requireBusinessAuth, async (re
   try {
     const businessId = req.user.id;
     const { hours, day, open_time, close_time, is_closed } = req.body;
-    const timeRegex = /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/;
-
     // If updating a single day
     if (typeof day !== 'undefined') {
       const dayError = validateNumber(day, 'Day', 0, 6);
       if (dayError) {
         return res.status(400).json({ error: dayError });
       }
+      // Only require open/close time if not closed
       if (!is_closed) {
-        if (!timeRegex.test(open_time)) {
-          return res.status(400).json({ error: `Invalid open time format for day ${day}. Expected HH:MM format.` });
-        }
-        if (!timeRegex.test(close_time)) {
-          return res.status(400).json({ error: `Invalid close time format for day ${day}. Expected HH:MM format.` });
+        if (!open_time || !close_time) {
+          return res.status(400).json({ error: `Open and close time are required for day ${day}.` });
         }
       }
       // Check if entry exists
@@ -1512,12 +1508,10 @@ app.put('/api/business/hours', authenticateToken, requireBusinessAuth, async (re
         const openTime = hour.open_time || '09:00';
         const closeTime = hour.close_time || '17:00';
         const isClosed = hour.is_closed || false;
+        // Only require open/close time if not closed
         if (!isClosed) {
-          if (!timeRegex.test(openTime)) {
-            return res.status(400).json({ error: `Invalid open time format for day ${hour.day}. Expected HH:MM format.` });
-          }
-          if (!timeRegex.test(closeTime)) {
-            return res.status(400).json({ error: `Invalid close time format for day ${hour.day}. Expected HH:MM format.` });
+          if (!openTime || !closeTime) {
+            return res.status(400).json({ error: `Open and close time are required for day ${hour.day}.` });
           }
         }
         const { data: existing } = await supabase
