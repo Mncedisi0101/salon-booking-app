@@ -691,14 +691,10 @@ class BusinessDashboard {
                 let close_time = closeEl.value;
                 if (!open_time || open_time.trim() === '') open_time = '09:00';
                 if (!close_time || close_time.trim() === '') close_time = '17:00';
-                const timeRegex = /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/;
+                // Only require open/close time if not closed
                 if (!is_closed) {
-                    if (!timeRegex.test(open_time)) {
-                        alert(`Invalid open time format for day ${day}`);
-                        return;
-                    }
-                    if (!timeRegex.test(close_time)) {
-                        alert(`Invalid close time format for day ${day}`);
+                    if (!open_time || !close_time) {
+                        alert(`Open and close time are required for day ${day}`);
                         return;
                     }
                 }
@@ -749,14 +745,10 @@ class BusinessDashboard {
                     close_time = '17:00';
                 }
                 
-                // Validate time format (HH:MM)
-                const timeRegex = /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/;
+                // Only require open/close time if not closed
                 if (!is_closed) {
-                    if (!timeRegex.test(open_time)) {
-                        throw new Error(`Invalid open time format for day ${day}`);
-                    }
-                    if (!timeRegex.test(close_time)) {
-                        throw new Error(`Invalid close time format for day ${day}`);
+                    if (!open_time || !close_time) {
+                        throw new Error(`Open and close time are required for day ${day}`);
                     }
                 }
                 
