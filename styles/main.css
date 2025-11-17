@@ -529,6 +529,7 @@ h4 { font-size: var(--font-size-xl); }
 
 .checkbox-group input[type="checkbox"]:checked::after {
     content: '';
+    display: block;
     position: absolute;
     top: 2px;
     left: 6px;
