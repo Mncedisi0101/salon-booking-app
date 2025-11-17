@@ -19,6 +19,13 @@ class AdminDashboard {
     }
 
     async loadDashboardStats() {
+        // Check network before loading
+        if (!loadingManager.checkNetworkBeforeAction('load dashboard statistics')) {
+            return;
+        }
+
+        loadingManager.show('Loading dashboard statistics...');
+
         try {
             // Load businesses count
             const businessesResponse = await fetch('/api/admin/businesses', {
@@ -62,10 +69,23 @@ class AdminDashboard {
 
         } catch (error) {
             console.error('Error loading dashboard stats:', error);
+            loadingManager.showNotification('Failed to load dashboard statistics. Please check your connection.', 'error');
+        } finally {
+            loadingManager.hide();
         }
     }
 
     async loadBusinesses() {
+        // Check network before loading
+        if (!loadingManager.checkNetworkBeforeAction('load businesses')) {
+            return;
+        }
+
+        const tbody = document.getElementById('businessesTableBody');
+        if (tbody) {
+            loadingManager.showTableLoading(tbody, 7, 'Loading businesses...');
+        }
+
         try {
             const response = await fetch('/api/admin/businesses', {
                 headers: this.authManager.getAuthHeaders()
@@ -82,6 +102,10 @@ class AdminDashboard {
 
         } catch (error) {
             console.error('Error loading businesses:', error);
+            loadingManager.showNotification('Failed to load businesses. Please check your connection.', 'error');
+            if (tbody) {
+                tbody.innerHTML = '<tr><td colspan="7" class="text-center text-danger py-4">Failed to load businesses</td></tr>';
+            }
         }
     }
 
@@ -188,6 +212,13 @@ class AdminDashboard {
             return;
         }
 
+        // Check network before action
+        if (!loadingManager.checkNetworkBeforeAction('delete business')) {
+            return;
+        }
+
+        loadingManager.show('Deleting business...');
+
         try {
             // Note: You'll need to add a DELETE endpoint for businesses in your server
             const response = await fetch(`/api/admin/businesses/${businessId}`, {
@@ -198,19 +229,31 @@ class AdminDashboard {
             const data = await response.json();
 
             if (data.success) {
-                this.showNotification('Business deleted successfully!', 'success');
+                loadingManager.showNotification('Business deleted successfully!', 'success');
                 this.loadBusinesses();
                 this.loadDashboardStats();
             } else {
-                this.showNotification(data.error || 'Failed to delete business', 'error');
+                loadingManager.showNotification(data.error || 'Failed to delete business', 'error');
             }
         } catch (error) {
             console.error('Error deleting business:', error);
-            this.showNotification('Failed to delete business', 'error');
+            loadingManager.showNotification('Failed to delete business. Please check your connection.', 'error');
+        } finally {
+            loadingManager.hide();
         }
     }
 
     async loadLeads() {
+        // Check network before loading
+        if (!loadingManager.checkNetworkBeforeAction('load leads')) {
+            return;
+        }
+
+        const tbody = document.getElementById('leadsTableBody');
+        if (tbody) {
+            loadingManager.showTableLoading(tbody, 7, 'Loading leads...');
+        }
+
         try {
             const response = await fetch('/api/admin/leads', {
                 headers: this.authManager.getAuthHeaders()
@@ -227,6 +270,10 @@ class AdminDashboard {
 
         } catch (error) {
             console.error('Error loading leads:', error);
+            loadingManager.showNotification('Failed to load leads. Please check your connection.', 'error');
+            if (tbody) {
+                tbody.innerHTML = '<tr><td colspan="7" class="text-center text-danger py-4">Failed to load leads</td></tr>';
+            }
         }
     }
 
@@ -286,6 +333,13 @@ class AdminDashboard {
     }
 
     async updateLeadStatus(leadId, status) {
+        // Check network before action
+        if (!loadingManager.checkNetworkBeforeAction('update lead status')) {
+            return;
+        }
+
+        loadingManager.show('Updating lead status...');
+
         try {
             const response = await fetch(`/api/admin/leads/${leadId}`, {
                 method: 'PUT',
@@ -296,19 +350,31 @@ class AdminDashboard {
             const data = await response.json();
 
             if (data.success) {
-                this.showNotification('Lead status updated successfully!', 'success');
+                loadingManager.showNotification('Lead status updated successfully!', 'success');
                 this.loadLeads();
                 this.loadDashboardStats();
             } else {
-                this.showNotification(data.error || 'Failed to update lead status', 'error');
+                loadingManager.showNotification(data.error || 'Failed to update lead status', 'error');
             }
         } catch (error) {
             console.error('Error updating lead status:', error);
-            this.showNotification('Failed to update lead status', 'error');
+            loadingManager.showNotification('Failed to update lead status. Please check your connection.', 'error');
+        } finally {
+            loadingManager.hide();
         }
     }
 
     async loadAppointments() {
+        // Check network before loading
+        if (!loadingManager.checkNetworkBeforeAction('load appointments')) {
+            return;
+        }
+
+        const tbody = document.getElementById('allAppointmentsTableBody');
+        if (tbody) {
+            loadingManager.showTableLoading(tbody, 6, 'Loading appointments...');
+        }
+
         try {
             const response = await fetch('/api/admin/appointments', {
                 headers: this.authManager.getAuthHeaders()
@@ -318,6 +384,10 @@ class AdminDashboard {
 
         } catch (error) {
             console.error('Error loading appointments:', error);
+            loadingManager.showNotification('Failed to load appointments. Please check your connection.', 'error');
+            if (tbody) {
+                tbody.innerHTML = '<tr><td colspan="6" class="text-center text-danger py-4">Failed to load appointments</td></tr>';
+            }
         }
     }
 
@@ -379,6 +449,13 @@ class AdminDashboard {
     }
 
     async updateAppointmentStatus(appointmentId, status) {
+        // Check network before action
+        if (!loadingManager.checkNetworkBeforeAction('update appointment status')) {
+            return;
+        }
+
+        loadingManager.show('Updating appointment status...');
+
         try {
             const response = await fetch(`/api/admin/appointments/${appointmentId}/status`, {
                 method: 'PUT',
@@ -389,15 +466,17 @@ class AdminDashboard {
             const data = await response.json();
 
             if (data.success) {
-                this.showNotification('Appointment status updated successfully!', 'success');
+                loadingManager.showNotification('Appointment status updated successfully!', 'success');
                 this.loadAppointments();
                 this.loadDashboardStats();
             } else {
-                this.showNotification(data.error || 'Failed to update appointment status', 'error');
+                loadingManager.showNotification(data.error || 'Failed to update appointment status', 'error');
             }
         } catch (error) {
             console.error('Error updating appointment status:', error);
-            this.showNotification('Failed to update appointment status', 'error');
+            loadingManager.showNotification('Failed to update appointment status. Please check your connection.', 'error');
+        } finally {
+            loadingManager.hide();
         }
     }
 

@@ -75,10 +75,22 @@ class CustomerBooking {
         const businessId = urlParams.get('business');
         
         if (!businessId) {
-            alert('Invalid business link. Please scan the QR code again.');
-            window.location.href = '/';
+            loadingManager.showNotification('Invalid business link. Please scan the QR code again.', 'error');
+            setTimeout(() => {
+                window.location.href = '/';
+            }, 2000);
             return;
         }
+
+        // Check network before loading
+        if (!loadingManager.checkNetworkBeforeAction('load business information')) {
+            setTimeout(() => {
+                window.location.href = '/';
+            }, 2000);
+            return;
+        }
+
+        loadingManager.show('Loading business information...');
 
         try {
             const response = await fetch(`/api/customer/business/${businessId}`);
@@ -101,13 +113,24 @@ class CustomerBooking {
 
         } catch (error) {
             console.error('Error loading business:', error);
-            alert('Failed to load business information. Please try again.');
-            window.location.href = '/';
+            loadingManager.showNotification('Failed to load business information. Please check your connection.', 'error');
+            setTimeout(() => {
+                window.location.href = '/';
+            }, 2000);
+        } finally {
+            loadingManager.hide();
         }
     }
 
     async loadServices() {
         if (!this.currentBusiness) return;
+
+        // Check network before loading
+        if (!loadingManager.checkNetworkBeforeAction('load services')) {
+            return;
+        }
+
+        loadingManager.show('Loading services...');
 
         try {
             const response = await fetch(`/api/customer/services/${this.currentBusiness.id}`);
@@ -117,7 +140,9 @@ class CustomerBooking {
 
         } catch (error) {
             console.error('Error loading services:', error);
-            alert('Failed to load services. Please try again.');
+            loadingManager.showNotification('Failed to load services. Please check your connection.', 'error');
+        } finally {
+            loadingManager.hide();
         }
     }
 
@@ -195,6 +220,13 @@ class CustomerBooking {
     async loadStylists() {
         if (!this.currentBusiness) return;
 
+        // Check network before loading
+        if (!loadingManager.checkNetworkBeforeAction('load stylists')) {
+            return;
+        }
+
+        loadingManager.show('Loading stylists...');
+
         try {
             const response = await fetch(`/api/customer/stylists/${this.currentBusiness.id}`);
             const stylists = await response.json();
@@ -203,7 +235,9 @@ class CustomerBooking {
 
         } catch (error) {
             console.error('Error loading stylists:', error);
-            alert('Failed to load stylists. Please try again.');
+            loadingManager.showNotification('Failed to load stylists. Please check your connection.', 'error');
+        } finally {
+            loadingManager.hide();
         }
     }
 
@@ -285,6 +319,20 @@ class CustomerBooking {
             return;
         }
 
+        // Check network before loading
+        if (!loadingManager.checkNetworkBeforeAction('load available time slots')) {
+            const container = document.getElementById('timeSlots');
+            if (container) {
+                container.innerHTML = '<div class="alert alert-danger"><i class="fas fa-wifi-slash me-2"></i>No internet connection</div>';
+            }
+            return;
+        }
+
+        const container = document.getElementById('timeSlots');
+        if (container) {
+            container.innerHTML = '<div class="text-center py-3"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">Loading...</span></div><p class="text-muted mt-2">Loading available times...</p></div>';
+        }
+
         try {
             const response = await fetch(
                 `/api/customer/available-slots/${this.currentBusiness.id}?` +
@@ -296,6 +344,10 @@ class CustomerBooking {
 
         } catch (error) {
             console.error('Error loading time slots:', error);
+            loadingManager.showNotification('Failed to load available times. Please check your connection.', 'error');
+            if (container) {
+                container.innerHTML = '<div class="alert alert-danger"><i class="fas fa-exclamation-circle me-2"></i>Failed to load available times</div>';
+            }
         }
     }
 
@@ -350,15 +402,18 @@ class CustomerBooking {
 
     async bookAppointment(customerData) {
         if (!this.selectedService || !this.selectedStylist || !this.selectedDate || !this.selectedTime) {
-            alert('Please complete all booking steps');
+            loadingManager.showNotification('Please complete all booking steps', 'warning');
             return;
         }
 
-        try {
-            // Show loading overlay
-            const loadingOverlay = document.getElementById('loadingOverlay');
-            if (loadingOverlay) loadingOverlay.style.display = 'flex';
+        // Check network before booking
+        if (!loadingManager.checkNetworkBeforeAction('book appointment')) {
+            return;
+        }
 
+        loadingManager.show('Booking your appointment...');
+
+        try {
             const bookingData = {
                 businessId: this.currentBusiness.id,
                 customerName: customerData.name,
@@ -385,27 +440,27 @@ class CustomerBooking {
             console.log('Booking response:', data);
 
             if (data.success) {
+                loadingManager.showNotification('Appointment booked successfully!', 'success');
                 // Show confirmation
                 this.showConfirmation(data.appointment);
             } else {
                 // Check if it's a time slot conflict error
                 if (data.error && data.error.includes('already booked')) {
-                    alert(data.error + '\n\nPlease select a different time slot. The available time slots have been refreshed.');
+                    loadingManager.showNotification(data.error + ' Please select a different time slot.', 'warning', 7000);
                     // Refresh time slots to show current availability
                     await this.loadAvailableTimes();
                     // Go back to date/time selection step
                     this.nextStep('dateStep');
                 } else {
-                    alert(data.error || 'Failed to book appointment');
+                    loadingManager.showNotification(data.error || 'Failed to book appointment', 'error');
                 }
                 console.error('Booking error:', data);
             }
         } catch (error) {
             console.error('Error booking appointment:', error);
-            alert('Failed to book appointment. Please try again. Error: ' + error.message);
+            loadingManager.showNotification('Failed to book appointment. Please check your connection and try again.', 'error');
         } finally {
-            const loadingOverlay = document.getElementById('loadingOverlay');
-            if (loadingOverlay) loadingOverlay.style.display = 'none';
+            loadingManager.hide();
         }
     }
 

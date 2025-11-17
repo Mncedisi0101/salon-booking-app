@@ -60,6 +60,13 @@ class AuthManager {
     }
 
     async businessRegister(formData) {
+        // Check network availability
+        if (!loadingManager.checkNetworkBeforeAction('register business')) {
+            return;
+        }
+
+        loadingManager.show('Registering business...');
+
         try {
             const response = await fetch('/api/business/register', {
                 method: 'POST',
@@ -72,19 +79,28 @@ class AuthManager {
             const data = await response.json();
 
             if (data.success) {
-                alert('Business registered successfully! Please login.');
+                loadingManager.showNotification('Business registered successfully! Please login.', 'success');
                 closeModal('businessRegisterModal');
                 document.getElementById('businessRegisterForm').reset();
             } else {
-                alert(data.error || 'Registration failed');
+                loadingManager.showNotification(data.error || 'Registration failed', 'error');
             }
         } catch (error) {
             console.error('Registration error:', error);
-            alert('Registration failed. Please try again.');
+            loadingManager.showNotification('Registration failed. Please check your connection and try again.', 'error');
+        } finally {
+            loadingManager.hide();
         }
     }
 
     async businessLogin(email, password, rememberMe = false) {
+        // Check network availability
+        if (!loadingManager.checkNetworkBeforeAction('login')) {
+            return;
+        }
+
+        loadingManager.show('Logging in...');
+
         try {
             const response = await fetch('/api/business/login', {
                 method: 'POST',
@@ -108,17 +124,29 @@ class AuthManager {
                     localStorage.removeItem('rememberedBusinessEmail');
                 }
                 
-                window.location.href = '/business';
+                loadingManager.showNotification('Login successful! Redirecting...', 'success', 1500);
+                setTimeout(() => {
+                    window.location.href = '/business';
+                }, 1500);
             } else {
-                alert(data.error || 'Login failed');
+                loadingManager.showNotification(data.error || 'Login failed', 'error');
             }
         } catch (error) {
             console.error('Login error:', error);
-            alert('Login failed. Please try again.');
+            loadingManager.showNotification('Login failed. Please check your connection and try again.', 'error');
+        } finally {
+            loadingManager.hide();
         }
     }
 
     async adminLogin(email, password, rememberMe = false) {
+        // Check network availability
+        if (!loadingManager.checkNetworkBeforeAction('login')) {
+            return;
+        }
+
+        loadingManager.show('Logging in...');
+
         try {
             const response = await fetch('/api/admin/login', {
                 method: 'POST',
@@ -142,17 +170,29 @@ class AuthManager {
                     localStorage.removeItem('rememberedAdminEmail');
                 }
                 
-                window.location.href = '/admin';
+                loadingManager.showNotification('Login successful! Redirecting...', 'success', 1500);
+                setTimeout(() => {
+                    window.location.href = '/admin';
+                }, 1500);
             } else {
-                alert(data.error || 'Admin login failed');
+                loadingManager.showNotification(data.error || 'Admin login failed', 'error');
             }
         } catch (error) {
             console.error('Admin login error:', error);
-            alert('Admin login failed. Please try again.');
+            loadingManager.showNotification('Admin login failed. Please check your connection and try again.', 'error');
+        } finally {
+            loadingManager.hide();
         }
     }
 
     async customerRegister(formData) {
+        // Check network availability
+        if (!loadingManager.checkNetworkBeforeAction('register')) {
+            return false;
+        }
+
+        loadingManager.show('Creating your account...');
+
         try {
             const response = await fetch('/api/customer/register', {
                 method: 'POST',
@@ -168,19 +208,29 @@ class AuthManager {
                 this.token = data.token;
                 localStorage.setItem('authToken', this.token);
                 this.currentUser = data.customer;
+                loadingManager.showNotification('Registration successful!', 'success');
                 return true;
             } else {
-                alert(data.error || 'Registration failed');
+                loadingManager.showNotification(data.error || 'Registration failed', 'error');
                 return false;
             }
         } catch (error) {
             console.error('Customer registration error:', error);
-            alert('Registration failed. Please try again.');
+            loadingManager.showNotification('Registration failed. Please check your connection and try again.', 'error');
             return false;
+        } finally {
+            loadingManager.hide();
         }
     }
 
     async customerLogin(email, password, rememberMe = false) {
+        // Check network availability
+        if (!loadingManager.checkNetworkBeforeAction('login')) {
+            return false;
+        }
+
+        loadingManager.show('Logging in...');
+
         try {
             const response = await fetch('/api/customer/login', {
                 method: 'POST',
@@ -204,15 +254,18 @@ class AuthManager {
                     localStorage.removeItem('rememberedCustomerEmail');
                 }
                 
+                loadingManager.showNotification('Login successful!', 'success');
                 return true;
             } else {
-                alert(data.error || 'Login failed');
+                loadingManager.showNotification(data.error || 'Login failed', 'error');
                 return false;
             }
         } catch (error) {
             console.error('Customer login error:', error);
-            alert('Login failed. Please try again.');
+            loadingManager.showNotification('Login failed. Please check your connection and try again.', 'error');
             return false;
+        } finally {
+            loadingManager.hide();
         }
     }
 

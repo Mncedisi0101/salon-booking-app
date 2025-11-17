@@ -21,6 +21,13 @@ class BusinessDashboard {
     }
 
     async loadBusinessData() {
+        // Check network before loading
+        if (!loadingManager.checkNetworkBeforeAction('load business data')) {
+            return;
+        }
+
+        loadingManager.show('Loading business data...');
+
         try {
             const response = await fetch('/api/business/data', {
                 headers: this.authManager.getAuthHeaders()
@@ -36,6 +43,9 @@ class BusinessDashboard {
 
         } catch (error) {
             console.error('Error loading business data:', error);
+            loadingManager.showNotification('Failed to load business data. Please check your connection.', 'error');
+        } finally {
+            loadingManager.hide();
         }
     }
 
@@ -50,6 +60,17 @@ class BusinessDashboard {
     }
 
     async loadServices() {
+        // Check network before loading
+        if (!loadingManager.checkNetworkBeforeAction('load services')) {
+            return;
+        }
+
+        // Show loading state in table
+        const tbody = document.getElementById('servicesTableBody');
+        if (tbody) {
+            loadingManager.showTableLoading(tbody, 6, 'Loading services...');
+        }
+
         try {
             const response = await fetch('/api/business/services', {
                 headers: this.authManager.getAuthHeaders()
@@ -60,6 +81,10 @@ class BusinessDashboard {
 
         } catch (error) {
             console.error('Error loading services:', error);
+            loadingManager.showNotification('Failed to load services. Please check your connection.', 'error');
+            if (tbody) {
+                tbody.innerHTML = '<tr><td colspan="6" class="text-center text-danger py-4">Failed to load services</td></tr>';
+            }
         }
     }
 
@@ -109,6 +134,13 @@ class BusinessDashboard {
     }
 
     async addService(formData) {
+        // Check network before action
+        if (!loadingManager.checkNetworkBeforeAction('add service')) {
+            return;
+        }
+
+        loadingManager.show('Adding service...');
+
         try {
             const response = await fetch('/api/business/services', {
                 method: 'POST',
@@ -119,7 +151,7 @@ class BusinessDashboard {
             const data = await response.json();
 
             if (data.success) {
-                alert('Service added successfully!');
+                loadingManager.showNotification('Service added successfully!', 'success');
                 const el = document.getElementById('addServiceModal');
                 if (el && window.bootstrap?.Modal) {
                     const modal = window.bootstrap.Modal.getOrCreateInstance(el);
@@ -129,11 +161,13 @@ class BusinessDashboard {
                 if (addForm) addForm.reset();
                 this.loadServices();
             } else {
-                alert(data.error || 'Failed to add service');
+                loadingManager.showNotification(data.error || 'Failed to add service', 'error');
             }
         } catch (error) {
             console.error('Error adding service:', error);
-            alert('Failed to add service');
+            loadingManager.showNotification('Failed to add service. Please check your connection.', 'error');
+        } finally {
+            loadingManager.hide();
         }
     }
 
@@ -160,6 +194,13 @@ class BusinessDashboard {
     }
 
     async updateService(formData) {
+        // Check network before action
+        if (!loadingManager.checkNetworkBeforeAction('update service')) {
+            return;
+        }
+
+        loadingManager.show('Updating service...');
+
         try {
             const serviceId = document.getElementById('editServiceId').value;
             const response = await fetch(`/api/business/services/${serviceId}`, {
@@ -171,7 +212,7 @@ class BusinessDashboard {
             const data = await response.json();
 
             if (data.success) {
-                alert('Service updated successfully!');
+                loadingManager.showNotification('Service updated successfully!', 'success');
                 const el = document.getElementById('editServiceModal');
                 if (el && window.bootstrap?.Modal) {
                     const modal = window.bootstrap.Modal.getOrCreateInstance(el);
@@ -179,11 +220,13 @@ class BusinessDashboard {
                 }
                 this.loadServices();
             } else {
-                alert(data.error || 'Failed to update service');
+                loadingManager.showNotification(data.error || 'Failed to update service', 'error');
             }
         } catch (error) {
             console.error('Error updating service:', error);
-            alert('Failed to update service');
+            loadingManager.showNotification('Failed to update service. Please check your connection.', 'error');
+        } finally {
+            loadingManager.hide();
         }
     }
 
@@ -191,6 +234,13 @@ class BusinessDashboard {
         if (!confirm('Are you sure you want to delete this service?')) {
             return;
         }
+
+        // Check network before action
+        if (!loadingManager.checkNetworkBeforeAction('delete service')) {
+            return;
+        }
+
+        loadingManager.show('Deleting service...');
 
         try {
             const response = await fetch(`/api/business/services/${serviceId}`, {
@@ -201,14 +251,16 @@ class BusinessDashboard {
             const data = await response.json();
 
             if (data.success) {
-                alert('Service deleted successfully!');
+                loadingManager.showNotification('Service deleted successfully!', 'success');
                 this.loadServices();
             } else {
-                alert(data.error || 'Failed to delete service');
+                loadingManager.showNotification(data.error || 'Failed to delete service', 'error');
             }
         } catch (error) {
             console.error('Error deleting service:', error);
-            alert('Failed to delete service');
+            loadingManager.showNotification('Failed to delete service. Please check your connection.', 'error');
+        } finally {
+            loadingManager.hide();
         }
     }
 
@@ -221,12 +273,27 @@ class BusinessDashboard {
 
     // Stylists
     async loadStylists() {
+        // Check network before loading
+        if (!loadingManager.checkNetworkBeforeAction('load stylists')) {
+            return;
+        }
+
+        // Show loading state in table
+        const tbody = document.getElementById('stylistsTableBody');
+        if (tbody) {
+            loadingManager.showTableLoading(tbody, 6, 'Loading stylists...');
+        }
+
         try {
             const res = await fetch('/api/business/stylists', { headers: this.authManager.getAuthHeaders() });
             const stylists = await res.json();
             this.renderStylists(stylists || []);
         } catch (e) {
             console.error('Error loading stylists:', e);
+            loadingManager.showNotification('Failed to load stylists. Please check your connection.', 'error');
+            if (tbody) {
+                tbody.innerHTML = '<tr><td colspan="6" class="text-center text-danger py-4">Failed to load stylists</td></tr>';
+            }
         }
     }
 
@@ -304,6 +371,12 @@ class BusinessDashboard {
 
     async submitStylistForm(e) {
         e.preventDefault();
+
+        // Check network before action
+        if (!loadingManager.checkNetworkBeforeAction('save stylist')) {
+            return;
+        }
+
         const form = document.getElementById('stylistForm');
         const payload = {
             name: document.getElementById('stylistName').value,
@@ -314,6 +387,9 @@ class BusinessDashboard {
             is_active: document.getElementById('stylistStatus').checked,
         };
         const isEdit = Boolean(form.dataset.editingId);
+
+        loadingManager.show(isEdit ? 'Updating stylist...' : 'Adding stylist...');
+
         try {
             let res;
             if (isEdit) {
@@ -324,7 +400,7 @@ class BusinessDashboard {
             }
             const data = await res.json();
             if (data.success) {
-                alert(isEdit ? 'Stylist updated' : 'Stylist added');
+                loadingManager.showNotification(isEdit ? 'Stylist updated successfully!' : 'Stylist added successfully!', 'success');
                 // Reset form state
                 delete form.dataset.editingId;
                 form.reset();
@@ -334,15 +410,28 @@ class BusinessDashboard {
                 }
                 this.loadStylists();
             } else {
-                alert(data.error || 'Failed to save stylist');
+                loadingManager.showNotification(data.error || 'Failed to save stylist', 'error');
             }
         } catch (err) {
             console.error('Save stylist error:', err);
-            alert('Failed to save stylist');
+            loadingManager.showNotification('Failed to save stylist. Please check your connection.', 'error');
+        } finally {
+            loadingManager.hide();
         }
     }
 
     async loadAppointments() {
+        // Check network before loading
+        if (!loadingManager.checkNetworkBeforeAction('load appointments')) {
+            return;
+        }
+
+        // Show loading state in table
+        const tbody = document.getElementById('appointmentsTableBody');
+        if (tbody) {
+            loadingManager.showTableLoading(tbody, 8, 'Loading appointments...');
+        }
+
         try {
             const statusFilter = document.getElementById('appointmentStatus')?.value || 'all';
             const dateFilter = document.getElementById('appointmentDate')?.value || '';
@@ -364,6 +453,10 @@ class BusinessDashboard {
             this.updateDashboardStats(appointments || []);
         } catch (error) {
             console.error('Error loading appointments:', error);
+            loadingManager.showNotification('Failed to load appointments. Please check your connection.', 'error');
+            if (tbody) {
+                tbody.innerHTML = '<tr><td colspan="8" class="text-center text-danger py-4">Failed to load appointments</td></tr>';
+            }
         }
     }
 
@@ -482,6 +575,13 @@ class BusinessDashboard {
     }
 
     async updateAppointmentStatus(appointmentId, status) {
+        // Check network before action
+        if (!loadingManager.checkNetworkBeforeAction('update appointment')) {
+            return;
+        }
+
+        loadingManager.show(`Updating appointment to ${status}...`);
+
         try {
             const response = await fetch(`/api/business/appointments/${appointmentId}/status`, {
                 method: 'PUT',
@@ -495,20 +595,29 @@ class BusinessDashboard {
                 // Show success message with email notification info
                 let message = `Appointment ${status} successfully!`;
                 if (status === 'confirmed' || status === 'cancelled' || status === 'completed') {
-                    message += '\n\nAn email notification has been sent to the customer.';
+                    message += ' Email notification sent to customer.';
                 }
-                alert(message);
+                loadingManager.showNotification(message, 'success');
                 this.loadAppointments();
             } else {
-                alert(data.error || 'Failed to update appointment');
+                loadingManager.showNotification(data.error || 'Failed to update appointment', 'error');
             }
         } catch (error) {
             console.error('Error updating appointment:', error);
-            alert('Failed to update appointment');
+            loadingManager.showNotification('Failed to update appointment. Please check your connection.', 'error');
+        } finally {
+            loadingManager.hide();
         }
     }
 
     async deleteAppointment(appointmentId) {
+        // Check network before action
+        if (!loadingManager.checkNetworkBeforeAction('delete appointment')) {
+            return;
+        }
+
+        loadingManager.show('Deleting appointment...');
+
         try {
             const response = await fetch(`/api/business/appointments/${appointmentId}`, {
                 method: 'DELETE',
@@ -518,14 +627,16 @@ class BusinessDashboard {
             const data = await response.json();
 
             if (data.success) {
-                alert('Appointment deleted successfully!');
+                loadingManager.showNotification('Appointment deleted successfully!', 'success');
                 this.loadAppointments();
             } else {
-                alert(data.error || 'Failed to delete appointment');
+                loadingManager.showNotification(data.error || 'Failed to delete appointment', 'error');
             }
         } catch (error) {
             console.error('Error deleting appointment:', error);
-            alert('Failed to delete appointment');
+            loadingManager.showNotification('Failed to delete appointment. Please check your connection.', 'error');
+        } finally {
+            loadingManager.hide();
         }
     }
 
@@ -632,12 +743,26 @@ class BusinessDashboard {
     }
 
     async loadBusinessHours() {
+        // Check network before loading
+        if (!loadingManager.checkNetworkBeforeAction('load business hours')) {
+            return;
+        }
+
+        const container = document.getElementById('businessHoursContainer');
+        if (container) {
+            loadingManager.showContainerLoading(container, 'Loading business hours...');
+        }
+
         try {
             const res = await fetch('/api/business/hours', { headers: this.authManager.getAuthHeaders() });
             const hours = await res.json();
             this.renderBusinessHours(Array.isArray(hours) ? hours : []);
         } catch (e) {
             console.error('Business hours load error:', e);
+            loadingManager.showNotification('Failed to load business hours. Please check your connection.', 'error');
+            if (container) {
+                container.innerHTML = '<div class="alert alert-danger">Failed to load business hours</div>';
+            }
         }
     }
 
@@ -728,6 +853,13 @@ class BusinessDashboard {
     }
 
     async saveBusinessHours() {
+        // Check network before action
+        if (!loadingManager.checkNetworkBeforeAction('save business hours')) {
+            return;
+        }
+
+        loadingManager.show('Saving business hours...');
+
         try {
             const container = document.getElementById('businessHoursContainer');
             const rows = Array.from(container.querySelectorAll('tbody tr'));
@@ -762,14 +894,16 @@ class BusinessDashboard {
             });
             const data = await res.json();
             if (data.success) {
-                alert(data.message || 'Business hours saved successfully!');
+                loadingManager.showNotification(data.message || 'Business hours saved successfully!', 'success');
                 await this.loadBusinessHours();
             } else {
-                alert(data.error || 'Failed to save business hours');
+                loadingManager.showNotification(data.error || 'Failed to save business hours', 'error');
             }
         } catch (e) {
             console.error('Save business hours error:', e);
-            alert(e.message || 'Failed to save business hours');
+            loadingManager.showNotification(e.message || 'Failed to save business hours. Please check your connection.', 'error');
+        } finally {
+            loadingManager.hide();
         }
     }
 
