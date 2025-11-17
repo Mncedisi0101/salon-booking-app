@@ -61,11 +61,13 @@ class AuthManager {
 
     async businessRegister(formData) {
         // Check network availability
-        if (!loadingManager.checkNetworkBeforeAction('register business')) {
+        if (typeof loadingManager !== 'undefined' && !loadingManager.checkNetworkBeforeAction('register business')) {
             return;
         }
 
-        loadingManager.show('Registering business...');
+        if (typeof loadingManager !== 'undefined') {
+            loadingManager.show('Registering business...');
+        }
 
         try {
             const response = await fetch('/api/business/register', {
@@ -79,27 +81,43 @@ class AuthManager {
             const data = await response.json();
 
             if (data.success) {
-                loadingManager.showNotification('Business registered successfully! Please login.', 'success');
+                if (typeof loadingManager !== 'undefined') {
+                    loadingManager.showNotification('Business registered successfully! Please login.', 'success');
+                } else {
+                    alert('Business registered successfully! Please login.');
+                }
                 closeModal('businessRegisterModal');
                 document.getElementById('businessRegisterForm').reset();
             } else {
-                loadingManager.showNotification(data.error || 'Registration failed', 'error');
+                if (typeof loadingManager !== 'undefined') {
+                    loadingManager.showNotification(data.error || 'Registration failed', 'error');
+                } else {
+                    alert(data.error || 'Registration failed');
+                }
             }
         } catch (error) {
             console.error('Registration error:', error);
-            loadingManager.showNotification('Registration failed. Please check your connection and try again.', 'error');
+            if (typeof loadingManager !== 'undefined') {
+                loadingManager.showNotification('Registration failed. Please check your connection and try again.', 'error');
+            } else {
+                alert('Registration failed. Please check your connection and try again.');
+            }
         } finally {
-            loadingManager.hide();
+            if (typeof loadingManager !== 'undefined') {
+                loadingManager.hide();
+            }
         }
     }
 
     async businessLogin(email, password, rememberMe = false) {
         // Check network availability
-        if (!loadingManager.checkNetworkBeforeAction('login')) {
+        if (typeof loadingManager !== 'undefined' && !loadingManager.checkNetworkBeforeAction('login')) {
             return;
         }
 
-        loadingManager.show('Logging in...');
+        if (typeof loadingManager !== 'undefined') {
+            loadingManager.show('Logging in...');
+        }
 
         try {
             const response = await fetch('/api/business/login', {
@@ -124,28 +142,44 @@ class AuthManager {
                     localStorage.removeItem('rememberedBusinessEmail');
                 }
                 
-                loadingManager.showNotification('Login successful! Redirecting...', 'success', 1500);
-                setTimeout(() => {
+                if (typeof loadingManager !== 'undefined') {
+                    loadingManager.showNotification('Login successful! Redirecting...', 'success', 1500);
+                    setTimeout(() => {
+                        window.location.href = '/business';
+                    }, 1500);
+                } else {
                     window.location.href = '/business';
-                }, 1500);
+                }
             } else {
-                loadingManager.showNotification(data.error || 'Login failed', 'error');
+                if (typeof loadingManager !== 'undefined') {
+                    loadingManager.showNotification(data.error || 'Login failed', 'error');
+                } else {
+                    alert(data.error || 'Login failed');
+                }
             }
         } catch (error) {
             console.error('Login error:', error);
-            loadingManager.showNotification('Login failed. Please check your connection and try again.', 'error');
+            if (typeof loadingManager !== 'undefined') {
+                loadingManager.showNotification('Login failed. Please check your connection and try again.', 'error');
+            } else {
+                alert('Login failed. Please check your connection and try again.');
+            }
         } finally {
-            loadingManager.hide();
+            if (typeof loadingManager !== 'undefined') {
+                loadingManager.hide();
+            }
         }
     }
 
     async adminLogin(email, password, rememberMe = false) {
         // Check network availability
-        if (!loadingManager.checkNetworkBeforeAction('login')) {
+        if (typeof loadingManager !== 'undefined' && !loadingManager.checkNetworkBeforeAction('login')) {
             return;
         }
 
-        loadingManager.show('Logging in...');
+        if (typeof loadingManager !== 'undefined') {
+            loadingManager.show('Logging in...');
+        }
 
         try {
             const response = await fetch('/api/admin/login', {
@@ -170,28 +204,44 @@ class AuthManager {
                     localStorage.removeItem('rememberedAdminEmail');
                 }
                 
-                loadingManager.showNotification('Login successful! Redirecting...', 'success', 1500);
-                setTimeout(() => {
+                if (typeof loadingManager !== 'undefined') {
+                    loadingManager.showNotification('Login successful! Redirecting...', 'success', 1500);
+                    setTimeout(() => {
+                        window.location.href = '/admin';
+                    }, 1500);
+                } else {
                     window.location.href = '/admin';
-                }, 1500);
+                }
             } else {
-                loadingManager.showNotification(data.error || 'Admin login failed', 'error');
+                if (typeof loadingManager !== 'undefined') {
+                    loadingManager.showNotification(data.error || 'Admin login failed', 'error');
+                } else {
+                    alert(data.error || 'Admin login failed');
+                }
             }
         } catch (error) {
             console.error('Admin login error:', error);
-            loadingManager.showNotification('Admin login failed. Please check your connection and try again.', 'error');
+            if (typeof loadingManager !== 'undefined') {
+                loadingManager.showNotification('Admin login failed. Please check your connection and try again.', 'error');
+            } else {
+                alert('Admin login failed. Please check your connection and try again.');
+            }
         } finally {
-            loadingManager.hide();
+            if (typeof loadingManager !== 'undefined') {
+                loadingManager.hide();
+            }
         }
     }
 
     async customerRegister(formData) {
         // Check network availability
-        if (!loadingManager.checkNetworkBeforeAction('register')) {
+        if (typeof loadingManager !== 'undefined' && !loadingManager.checkNetworkBeforeAction('register')) {
             return false;
         }
 
-        loadingManager.show('Creating your account...');
+        if (typeof loadingManager !== 'undefined') {
+            loadingManager.show('Creating your account...');
+        }
 
         try {
             const response = await fetch('/api/customer/register', {
@@ -208,28 +258,44 @@ class AuthManager {
                 this.token = data.token;
                 localStorage.setItem('authToken', this.token);
                 this.currentUser = data.customer;
-                loadingManager.showNotification('Registration successful!', 'success');
+                if (typeof loadingManager !== 'undefined') {
+                    loadingManager.showNotification('Registration successful!', 'success');
+                } else {
+                    alert('Registration successful!');
+                }
                 return true;
             } else {
-                loadingManager.showNotification(data.error || 'Registration failed', 'error');
+                if (typeof loadingManager !== 'undefined') {
+                    loadingManager.showNotification(data.error || 'Registration failed', 'error');
+                } else {
+                    alert(data.error || 'Registration failed');
+                }
                 return false;
             }
         } catch (error) {
             console.error('Customer registration error:', error);
-            loadingManager.showNotification('Registration failed. Please check your connection and try again.', 'error');
+            if (typeof loadingManager !== 'undefined') {
+                loadingManager.showNotification('Registration failed. Please check your connection and try again.', 'error');
+            } else {
+                alert('Registration failed. Please check your connection and try again.');
+            }
             return false;
         } finally {
-            loadingManager.hide();
+            if (typeof loadingManager !== 'undefined') {
+                loadingManager.hide();
+            }
         }
     }
 
     async customerLogin(email, password, rememberMe = false) {
         // Check network availability
-        if (!loadingManager.checkNetworkBeforeAction('login')) {
+        if (typeof loadingManager !== 'undefined' && !loadingManager.checkNetworkBeforeAction('login')) {
             return false;
         }
 
-        loadingManager.show('Logging in...');
+        if (typeof loadingManager !== 'undefined') {
+            loadingManager.show('Logging in...');
+        }
 
         try {
             const response = await fetch('/api/customer/login', {
@@ -254,18 +320,32 @@ class AuthManager {
                     localStorage.removeItem('rememberedCustomerEmail');
                 }
                 
-                loadingManager.showNotification('Login successful!', 'success');
+                if (typeof loadingManager !== 'undefined') {
+                    loadingManager.showNotification('Login successful!', 'success');
+                } else {
+                    alert('Login successful!');
+                }
                 return true;
             } else {
-                loadingManager.showNotification(data.error || 'Login failed', 'error');
+                if (typeof loadingManager !== 'undefined') {
+                    loadingManager.showNotification(data.error || 'Login failed', 'error');
+                } else {
+                    alert(data.error || 'Login failed');
+                }
                 return false;
             }
         } catch (error) {
             console.error('Customer login error:', error);
-            loadingManager.showNotification('Login failed. Please check your connection and try again.', 'error');
+            if (typeof loadingManager !== 'undefined') {
+                loadingManager.showNotification('Login failed. Please check your connection and try again.', 'error');
+            } else {
+                alert('Login failed. Please check your connection and try again.');
+            }
             return false;
         } finally {
-            loadingManager.hide();
+            if (typeof loadingManager !== 'undefined') {
+                loadingManager.hide();
+            }
         }
     }
 
