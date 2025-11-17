@@ -650,14 +650,19 @@ class BusinessDashboard {
         let html = '<div class="table-responsive"><table class="table align-middle"><thead><tr><th>Day</th><th style="width:160px">Open</th><th style="width:160px">Close</th><th style="width:140px">Closed</th></tr></thead><tbody>';
         for (let d = 0; d <= 6; d++) {
             const h = byDay.get(d) || { day: d, open_time: '09:00', close_time: '17:00', is_closed: d === 0 || d === 6 };
+            // Ensure time format is HH:MM
+            const openTime = h.open_time || '09:00';
+            const closeTime = h.close_time || '17:00';
+            const isClosed = h.is_closed || false;
+            
             html += `
                 <tr data-day="${d}">
                     <td>${dayNames[d]}</td>
-                    <td><input type="time" class="form-control open-time" value="${h.open_time}" ${h.is_closed ? 'disabled' : ''}></td>
-                    <td><input type="time" class="form-control close-time" value="${h.close_time}" ${h.is_closed ? 'disabled' : ''}></td>
+                    <td><input type="time" class="form-control open-time" value="${openTime}" ${isClosed ? 'disabled' : ''}></td>
+                    <td><input type="time" class="form-control close-time" value="${closeTime}" ${isClosed ? 'disabled' : ''}></td>
                     <td>
                         <div class="form-check form-switch">
-                            <input class="form-check-input is-closed" type="checkbox" ${h.is_closed ? 'checked' : ''}>
+                            <input class="form-check-input is-closed" type="checkbox" ${isClosed ? 'checked' : ''}>
                             <label class="form-check-label">Closed</label>
                         </div>
                     </td>
@@ -695,8 +700,28 @@ class BusinessDashboard {
             const hours = rows.map(row => {
                 const day = parseInt(row.getAttribute('data-day'), 10);
                 const is_closed = row.querySelector('.is-closed').checked;
-                const open_time = row.querySelector('.open-time').value || '09:00';
-                const close_time = row.querySelector('.close-time').value || '17:00';
+                let open_time = row.querySelector('.open-time').value;
+                let close_time = row.querySelector('.close-time').value;
+                
+                // Ensure time format is HH:MM
+                if (!open_time || open_time.trim() === '') {
+                    open_time = '09:00';
+                }
+                if (!close_time || close_time.trim() === '') {
+                    close_time = '17:00';
+                }
+                
+                // Validate time format (HH:MM)
+                const timeRegex = /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/;
+                if (!is_closed) {
+                    if (!timeRegex.test(open_time)) {
+                        throw new Error(`Invalid open time format for day ${day}`);
+                    }
+                    if (!timeRegex.test(close_time)) {
+                        throw new Error(`Invalid close time format for day ${day}`);
+                    }
+                }
+                
                 return { day, is_closed, open_time, close_time };
             });
 
@@ -707,14 +732,14 @@ class BusinessDashboard {
             });
             const data = await res.json();
             if (data.success) {
-                alert('Business hours saved');
-                this.loadBusinessHours();
+                alert('Business hours saved successfully!');
+                await this.loadBusinessHours();
             } else {
                 alert(data.error || 'Failed to save business hours');
             }
         } catch (e) {
             console.error('Save business hours error:', e);
-            alert('Failed to save business hours');
+            alert(e.message || 'Failed to save business hours');
         }
     }
 
@@ -874,107 +899,148 @@ class BusinessDashboard {
     }
 
     // Download QR Code
-    downloadQRCode() {
+    async downloadQRCode() {
         const qrCodeImg = document.getElementById('qrCodeImage');
         if (!qrCodeImg || !qrCodeImg.src) {
             alert('QR Code not available');
             return;
         }
 
-        // Create a temporary link element
-        const link = document.createElement('a');
-        link.href = qrCodeImg.src;
-        link.download = `${this.currentBusiness?.business_name || 'salon'}-qrcode.png`;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
+        try {
+            // Use PNG format from server
+            const pngUrl = `/api/qr-code/${this.currentBusiness.id}?format=png`;
+            
+            // Fetch the PNG image
+            const response = await fetch(pngUrl);
+            const blob = await response.blob();
+            
+            // Create download link
+            const url = window.URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `${this.currentBusiness?.business_name || 'salon'}-qrcode.png`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            
+            // Clean up
+            window.URL.revokeObjectURL(url);
+            
+            alert('QR Code downloaded successfully!');
+        } catch (error) {
+            console.error('Error downloading QR code:', error);
+            alert('Failed to download QR code. Please try again.');
+        }
     }
 
     // Print QR Code
-    printQRCode() {
+    async printQRCode() {
         const qrCodeImg = document.getElementById('qrCodeImage');
         if (!qrCodeImg || !qrCodeImg.src) {
             alert('QR Code not available');
             return;
         }
 
-        // Create a new window for printing
-        const printWindow = window.open('', '_blank');
-        const businessName = this.currentBusiness?.business_name || 'Salon';
-        
-        printWindow.document.write(`
-            <!DOCTYPE html>
-            <html>
-            <head>
-                <title>QR Code - ${businessName}</title>
-                <style>
-                    body {
-                        font-family: Arial, sans-serif;
-                        display: flex;
-                        flex-direction: column;
-                        align-items: center;
-                        justify-content: center;
-                        min-height: 100vh;
-                        margin: 0;
-                        padding: 20px;
-                    }
-                    h1 {
-                        color: #333;
-                        margin-bottom: 10px;
-                        font-size: 28px;
-                    }
-                    h2 {
-                        color: #666;
-                        font-weight: normal;
-                        margin-bottom: 30px;
-                        font-size: 18px;
-                    }
-                    img {
-                        max-width: 400px;
-                        height: auto;
-                        border: 2px solid #ddd;
-                        padding: 20px;
-                        background: white;
-                    }
-                    .instructions {
-                        margin-top: 30px;
-                        text-align: center;
-                        max-width: 500px;
-                    }
-                    .instructions p {
-                        color: #555;
-                        line-height: 1.6;
-                        margin: 10px 0;
-                    }
-                    @media print {
+        try {
+            // Use PNG format for better print quality
+            const pngUrl = `/api/qr-code/${this.currentBusiness.id}?format=png`;
+            
+            // Create a new window for printing
+            const printWindow = window.open('', '_blank');
+            const businessName = this.currentBusiness?.business_name || 'Salon';
+            
+            printWindow.document.write(`
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <title>QR Code - ${businessName}</title>
+                    <style>
                         body {
-                            padding: 0;
+                            font-family: Arial, sans-serif;
+                            display: flex;
+                            flex-direction: column;
+                            align-items: center;
+                            justify-content: center;
+                            min-height: 100vh;
+                            margin: 0;
+                            padding: 20px;
                         }
+                        h1 {
+                            color: #333;
+                            margin-bottom: 10px;
+                            font-size: 28px;
+                        }
+                        h2 {
+                            color: #666;
+                            font-weight: normal;
+                            margin-bottom: 30px;
+                            font-size: 18px;
+                        }
+                        img {
+                            max-width: 400px;
+                            height: auto;
+                            border: 2px solid #ddd;
+                            padding: 20px;
+                            background: white;
+                        }
+                        .instructions {
+                            margin-top: 30px;
+                            text-align: center;
+                            max-width: 500px;
+                        }
+                        .instructions p {
+                            color: #555;
+                            line-height: 1.6;
+                            margin: 10px 0;
+                        }
+                        @media print {
+                            body {
+                                padding: 0;
+                            }
+                        }
+                    </style>
+                </head>
+                <body>
+                    <h1>${businessName}</h1>
+                    <h2>Scan to Book an Appointment</h2>
+                    <img src="${pngUrl}" alt="QR Code" crossorigin="anonymous">
+                    <div class="instructions">
+                        <p><strong>How to use:</strong></p>
+                        <p>1. Scan this QR code with your phone camera</p>
+                        <p>2. Register or log in to book your appointment</p>
+                        <p>3. Choose your preferred service, stylist, and time</p>
+                    </div>
+                </body>
+                </html>
+            `);
+            
+            printWindow.document.close();
+            
+            // Wait for image to load before printing
+            printWindow.onload = function() {
+                const img = printWindow.document.querySelector('img');
+                if (img) {
+                    img.onload = function() {
+                        setTimeout(() => {
+                            printWindow.print();
+                        }, 250);
+                    };
+                    // Fallback if image loads before onload is set
+                    if (img.complete) {
+                        setTimeout(() => {
+                            printWindow.print();
+                        }, 250);
                     }
-                </style>
-            </head>
-            <body>
-                <h1>${businessName}</h1>
-                <h2>Scan to Book an Appointment</h2>
-                <img src="${qrCodeImg.src}" alt="QR Code">
-                <div class="instructions">
-                    <p><strong>How to use:</strong></p>
-                    <p>1. Scan this QR code with your phone camera</p>
-                    <p>2. Register or log in to book your appointment</p>
-                    <p>3. Choose your preferred service, stylist, and time</p>
-                </div>
-            </body>
-            </html>
-        `);
-        
-        printWindow.document.close();
-        
-        // Wait for image to load before printing
-        printWindow.onload = function() {
-            setTimeout(() => {
-                printWindow.print();
-            }, 250);
-        };
+                } else {
+                    setTimeout(() => {
+                        printWindow.print();
+                    }, 250);
+                }
+            };
+        } catch (error) {
+            console.error('Error printing QR code:', error);
+            alert('Failed to print QR code. Please try again.');
+        }
     }
 }
 

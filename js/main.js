@@ -98,18 +98,28 @@ class MainApp {
         // Form submission handlers
         const loginFormElement = document.getElementById('loginFormElement');
         if (loginFormElement) {
+            // Restore remembered email if exists
+            const rememberedCustomerEmail = localStorage.getItem('rememberedCustomerEmail');
+            if (rememberedCustomerEmail) {
+                const emailInput = document.getElementById('loginEmail');
+                const rememberCheckbox = document.getElementById('rememberMeLogin');
+                if (emailInput) emailInput.value = rememberedCustomerEmail;
+                if (rememberCheckbox) rememberCheckbox.checked = true;
+            }
+            
             loginFormElement.addEventListener('submit', async (e) => {
                 e.preventDefault();
 
                 const email = document.getElementById('loginEmail').value;
                 const password = document.getElementById('loginPassword').value;
+                const rememberMe = document.getElementById('rememberMeLogin')?.checked || false;
 
                 // Show loading overlay
                 const loadingOverlay = document.getElementById('loadingOverlay');
                 if (loadingOverlay) loadingOverlay.style.display = 'flex';
 
                 try {
-                    const success = await authManager.customerLogin(email, password);
+                    const success = await authManager.customerLogin(email, password, rememberMe);
 
                     if (success) {
                         // Redirect to booking page after successful login
@@ -263,6 +273,10 @@ class MainApp {
                                     <div class="form-group">
                                         <label for="customerLoginPassword">Password *</label>
                                         <input type="password" id="customerLoginPassword" name="customerLoginPassword" required>
+                                    </div>
+                                    <div class="form-group checkbox-group">
+                                        <input type="checkbox" id="rememberCustomer" name="rememberCustomer">
+                                        <label for="rememberCustomer">Remember me</label>
                                     </div>
                                     <div class="form-actions">
                                         <button type="submit" class="btn btn-primary">Login</button>

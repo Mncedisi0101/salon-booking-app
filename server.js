@@ -1453,13 +1453,13 @@ app.put('/api/business/hours', authenticateToken, requireBusinessAuth, async (re
       return res.status(400).json({ error: 'Business hours data is required' });
     }
 
-    // Validate time format
+    // Validate time format (HH:MM)
     const timeRegex = /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/;
 
     for (const hour of hours) {
       // Validate required fields
-      if (hour.day === undefined || hour.open_time === undefined || hour.close_time === undefined) {
-        return res.status(400).json({ error: 'Each hour entry must have day, open_time, and close_time' });
+      if (hour.day === undefined) {
+        return res.status(400).json({ error: 'Day is required for each hour entry' });
       }
 
       // Validate day (0-6)
@@ -1468,34 +1468,64 @@ app.put('/api/business/hours', authenticateToken, requireBusinessAuth, async (re
         return res.status(400).json({ error: dayError });
       }
 
-      // Validate time format
-      if (!hour.is_closed) {
-        if (!timeRegex.test(hour.open_time)) {
-          return res.status(400).json({ error: 'Invalid open time format' });
+      // Set defaults for time values
+      const openTime = hour.open_time || '09:00';
+      const closeTime = hour.close_time || '17:00';
+      const isClosed = hour.is_closed || false;
+
+      // Validate time format only if not closed
+      if (!isClosed) {
+        if (!timeRegex.test(openTime)) {
+          return res.status(400).json({ error: `Invalid open time format for day ${hour.day}. Expected HH:MM format.` });
         }
-        if (!timeRegex.test(hour.close_time)) {
-          return res.status(400).json({ error: 'Invalid close time format' });
+        if (!timeRegex.test(closeTime)) {
+          return res.status(400).json({ error: `Invalid close time format for day ${hour.day}. Expected HH:MM format.` });
         }
       }
 
-      const { error } = await supabase
+      // Check if entry exists
+      const { data: existing } = await supabase
         .from('business_hours')
-        .update({
-          open_time: hour.open_time,
-          close_time: hour.close_time,
-          is_closed: hour.is_closed
-        })
+        .select('id')
         .eq('business_id', businessId)
-        .eq('day', hour.day);
+        .eq('day', hour.day)
+        .single();
 
-      if (error) throw error;
+      if (existing) {
+        // Update existing entry
+        const { error } = await supabase
+          .from('business_hours')
+          .update({
+            open_time: openTime,
+            close_time: closeTime,
+            is_closed: isClosed,
+            updated_at: new Date().toISOString()
+          })
+          .eq('business_id', businessId)
+          .eq('day', hour.day);
+
+        if (error) throw error;
+      } else {
+        // Create new entry
+        const { error } = await supabase
+          .from('business_hours')
+          .insert({
+            business_id: businessId,
+            day: hour.day,
+            open_time: openTime,
+            close_time: closeTime,
+            is_closed: isClosed
+          });
+
+        if (error) throw error;
+      }
     }
 
-    res.json({ success: true });
+    res.json({ success: true, message: 'Business hours updated successfully' });
 
   } catch (error) {
     console.error('Update hours error:', error);
-    res.status(500).json({ error: 'Internal server error' });
+    res.status(500).json({ error: 'Failed to update business hours' });
   }
 });
 
@@ -1574,8 +1604,15 @@ app.get('/api/customer/available-slots/:businessId', async (req, res) => {
     const businessId = req.params.businessId;
     const { date, duration, stylistId } = req.query;
 
+    // Validate required parameters
+    if (!date || !duration || !stylistId) {
+      return res.status(400).json({ error: 'Missing required parameters' });
+    }
+
     // Get business hours for the specific day
-    const dayOfWeek = new Date(date).getDay();
+    const requestDate = new Date(date);
+    const dayOfWeek = requestDate.getDay();
+    
     const { data: businessHours, error: hoursError } = await supabase
       .from('business_hours')
       .select('*')
@@ -1583,6 +1620,7 @@ app.get('/api/customer/available-slots/:businessId', async (req, res) => {
       .eq('day', dayOfWeek)
       .single();
 
+    // If business is closed on this day, return empty array
     if (hoursError || !businessHours || businessHours.is_closed) {
       return res.json([]);
     }
@@ -1598,12 +1636,18 @@ app.get('/api/customer/available-slots/:businessId', async (req, res) => {
 
     if (appointmentsError) throw appointmentsError;
 
+    // Check if the selected date is today
+    const today = new Date();
+    const isToday = requestDate.toDateString() === today.toDateString();
+    const currentTime = isToday ? today.toTimeString().slice(0, 5) : null;
+
     // Generate available time slots
     const availableSlots = generateTimeSlots(
       businessHours.open_time,
       businessHours.close_time,
       parseInt(duration),
-      existingAppointments || []
+      existingAppointments || [],
+      currentTime
     );
 
     res.json(availableSlots);
@@ -1947,14 +1991,16 @@ app.put('/api/admin/leads/:id', authenticateToken, requireAdminAuth, async (req,
 // Get All Appointments
 app.get('/api/admin/appointments', authenticateToken, requireAdminAuth, async (req, res) => {
   try {
-    const { data: appointments, error } = await supabase
+    // Use admin client to access customer email (protected by RLS)
+    const client = supabaseAdmin || supabase;
+    const { data: appointments, error } = await client
       .from('appointments')
       .select(`
         *,
         businesses:business_id(business_name),
         services:service_id(name, price),
         stylists:stylist_id(name),
-        customers:customer_id(name, phone)
+        customers:customer_id(name, phone, email)
       `)
       .order('appointment_date', { ascending: false });
 
@@ -1968,15 +2014,78 @@ app.get('/api/admin/appointments', authenticateToken, requireAdminAuth, async (r
   }
 });
 
+// Update Appointment Status (Admin)
+app.put('/api/admin/appointments/:id/status', authenticateToken, requireAdminAuth, async (req, res) => {
+  try {
+    const appointmentId = req.params.id;
+    const { status } = req.body;
+
+    // Validate status
+    const validStatuses = ['pending', 'confirmed', 'completed', 'cancelled'];
+    if (!validStatuses.includes(status)) {
+      return res.status(400).json({ error: 'Invalid status value' });
+    }
+
+    // Update appointment status
+    const { data: appointment, error: updateError } = await supabase
+      .from('appointments')
+      .update({ 
+        status,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', appointmentId)
+      .select(`
+        *,
+        businesses:business_id(business_name, email, phone),
+        services:service_id(name, price, duration),
+        stylists:stylist_id(name),
+        customers:customer_id(name, phone, email)
+      `)
+      .single();
+
+    if (updateError) throw updateError;
+
+    // Send email notification to customer
+    try {
+      await sendAppointmentEmail(appointment, status);
+    } catch (emailError) {
+      console.error('Email notification error:', emailError);
+      // Don't fail the request if email fails
+    }
+
+    res.json({ 
+      success: true, 
+      message: 'Appointment status updated successfully',
+      appointment 
+    });
+
+  } catch (error) {
+    console.error('Admin appointment status update error:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: 'Failed to update appointment status' 
+    });
+  }
+});
+
 // Generate QR Code
 app.get('/api/qr-code/:businessId', async (req, res) => {
   try {
     const businessId = req.params.businessId;
+    const format = req.query.format || 'svg'; // Support both svg and png
     const qrUrl = `${req.protocol}://${req.get('host')}/customerauth?business=${businessId}`;
     
-    const qrSvg = qr.image(qrUrl, { type: 'svg' });
-    res.setHeader('Content-type', 'image/svg+xml');
-    qrSvg.pipe(res);
+    if (format === 'png') {
+      // Generate PNG format
+      const qrPng = qr.image(qrUrl, { type: 'png', size: 10, margin: 2 });
+      res.setHeader('Content-type', 'image/png');
+      qrPng.pipe(res);
+    } else {
+      // Default to SVG format
+      const qrSvg = qr.image(qrUrl, { type: 'svg' });
+      res.setHeader('Content-type', 'image/svg+xml');
+      qrSvg.pipe(res);
+    }
 
   } catch (error) {
     console.error('QR code error:', error);
@@ -1990,7 +2099,7 @@ app.get('/api/verify-token', authenticateToken, (req, res) => {
 });
 
 // Helper function to generate time slots
-function generateTimeSlots(openTime, closeTime, duration, existingAppointments) {
+function generateTimeSlots(openTime, closeTime, duration, existingAppointments, currentTime = null) {
   const slots = [];
   const start = new Date(`1970-01-01T${openTime}`);
   const end = new Date(`1970-01-01T${closeTime}`);
@@ -2000,6 +2109,12 @@ function generateTimeSlots(openTime, closeTime, duration, existingAppointments) 
   while (current < end) {
     const slotTime = current.toTimeString().slice(0, 5);
     const slotEnd = new Date(current.getTime() + duration * 60000);
+    
+    // Skip past time slots if currentTime is provided (for today's bookings)
+    if (currentTime && slotTime <= currentTime) {
+      current = new Date(current.getTime() + 30 * 60000); // 30-minute intervals
+      continue;
+    }
     
     // Check if slot conflicts with existing appointments
     const isAvailable = !existingAppointments.some(apt => {

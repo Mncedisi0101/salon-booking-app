@@ -84,7 +84,7 @@ class AuthManager {
         }
     }
 
-    async businessLogin(email, password) {
+    async businessLogin(email, password, rememberMe = false) {
         try {
             const response = await fetch('/api/business/login', {
                 method: 'POST',
@@ -100,6 +100,14 @@ class AuthManager {
                 this.token = data.token;
                 localStorage.setItem('authToken', this.token);
                 this.currentUser = data.business;
+                
+                // Handle remember me
+                if (rememberMe) {
+                    localStorage.setItem('rememberedBusinessEmail', email);
+                } else {
+                    localStorage.removeItem('rememberedBusinessEmail');
+                }
+                
                 window.location.href = '/business';
             } else {
                 alert(data.error || 'Login failed');
@@ -110,7 +118,7 @@ class AuthManager {
         }
     }
 
-    async adminLogin(email, password) {
+    async adminLogin(email, password, rememberMe = false) {
         try {
             const response = await fetch('/api/admin/login', {
                 method: 'POST',
@@ -126,6 +134,14 @@ class AuthManager {
                 this.token = data.token;
                 localStorage.setItem('authToken', this.token);
                 this.currentUser = data.admin;
+                
+                // Handle remember me
+                if (rememberMe) {
+                    localStorage.setItem('rememberedAdminEmail', email);
+                } else {
+                    localStorage.removeItem('rememberedAdminEmail');
+                }
+                
                 window.location.href = '/admin';
             } else {
                 alert(data.error || 'Admin login failed');
@@ -164,7 +180,7 @@ class AuthManager {
         }
     }
 
-    async customerLogin(email, password) {
+    async customerLogin(email, password, rememberMe = false) {
         try {
             const response = await fetch('/api/customer/login', {
                 method: 'POST',
@@ -180,6 +196,14 @@ class AuthManager {
                 this.token = data.token;
                 localStorage.setItem('authToken', this.token);
                 this.currentUser = data.customer;
+                
+                // Handle remember me
+                if (rememberMe) {
+                    localStorage.setItem('rememberedCustomerEmail', email);
+                } else {
+                    localStorage.removeItem('rememberedCustomerEmail');
+                }
+                
                 return true;
             } else {
                 alert(data.error || 'Login failed');
@@ -249,22 +273,42 @@ document.addEventListener('DOMContentLoaded', function() {
     // Business login
     const businessLoginForm = document.getElementById('businessLoginForm');
     if (businessLoginForm) {
+        // Restore remembered email if exists
+        const rememberedBusinessEmail = localStorage.getItem('rememberedBusinessEmail');
+        if (rememberedBusinessEmail) {
+            const emailInput = document.getElementById('businessLoginEmail');
+            const rememberCheckbox = document.getElementById('rememberBusiness');
+            if (emailInput) emailInput.value = rememberedBusinessEmail;
+            if (rememberCheckbox) rememberCheckbox.checked = true;
+        }
+        
         businessLoginForm.addEventListener('submit', function(e) {
             e.preventDefault();
             const email = document.getElementById('businessLoginEmail').value;
             const password = document.getElementById('businessLoginPassword').value;
-            authManager.businessLogin(email, password);
+            const rememberMe = document.getElementById('rememberBusiness')?.checked || false;
+            authManager.businessLogin(email, password, rememberMe);
         });
     }
 
     // Admin login
     const adminLoginForm = document.getElementById('adminLoginForm');
     if (adminLoginForm) {
+        // Restore remembered email if exists
+        const rememberedAdminEmail = localStorage.getItem('rememberedAdminEmail');
+        if (rememberedAdminEmail) {
+            const emailInput = document.getElementById('adminEmail');
+            const rememberCheckbox = document.getElementById('rememberMe');
+            if (emailInput) emailInput.value = rememberedAdminEmail;
+            if (rememberCheckbox) rememberCheckbox.checked = true;
+        }
+        
         adminLoginForm.addEventListener('submit', function(e) {
             e.preventDefault();
             const email = document.getElementById('adminEmail').value;
             const password = document.getElementById('adminPassword').value;
-            authManager.adminLogin(email, password);
+            const rememberMe = document.getElementById('rememberMe')?.checked || false;
+            authManager.adminLogin(email, password, rememberMe);
         });
     }
 
@@ -290,11 +334,21 @@ document.addEventListener('DOMContentLoaded', function() {
     // Customer login
     const customerLoginForm = document.getElementById('customerLoginForm');
     if (customerLoginForm) {
+        // Restore remembered email if exists
+        const rememberedCustomerEmail = localStorage.getItem('rememberedCustomerEmail');
+        if (rememberedCustomerEmail) {
+            const emailInput = document.getElementById('customerLoginEmail');
+            const rememberCheckbox = document.getElementById('rememberCustomer');
+            if (emailInput) emailInput.value = rememberedCustomerEmail;
+            if (rememberCheckbox) rememberCheckbox.checked = true;
+        }
+        
         customerLoginForm.addEventListener('submit', async function(e) {
             e.preventDefault();
             const email = document.getElementById('customerLoginEmail').value;
             const password = document.getElementById('customerLoginPassword').value;
-            const success = await authManager.customerLogin(email, password);
+            const rememberMe = document.getElementById('rememberCustomer')?.checked || false;
+            const success = await authManager.customerLogin(email, password, rememberMe);
             if (success) {
                 alert('Login successful!');
                 closeModal('customerLoginModal');

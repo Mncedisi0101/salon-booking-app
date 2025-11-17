@@ -306,7 +306,11 @@ class CustomerBooking {
         container.innerHTML = '';
 
         if (timeSlots.length === 0) {
-            container.innerHTML = '<div class="text-muted">No available time slots for this date.</div>';
+            const isToday = this.selectedDate === new Date().toISOString().split('T')[0];
+            const message = isToday 
+                ? '<div class="alert alert-warning"><i class="fas fa-clock me-2"></i>No available time slots remaining for today. Please select a future date.</div>'
+                : '<div class="alert alert-info"><i class="fas fa-info-circle me-2"></i>The business is closed on this day or all time slots are booked.</div>';
+            container.innerHTML = message;
             return;
         }
 
@@ -530,7 +534,21 @@ class CustomerBooking {
         if (dateInput) {
             dateInput.addEventListener('change', (e) => {
                 this.selectedDate = e.target.value;
+                // Reset time selection when date changes
+                this.selectedTime = null;
+                const nextButton = document.getElementById('nextToInfo');
+                if (nextButton) {
+                    nextButton.disabled = true;
+                }
+                // Clear summary
+                document.getElementById('summaryDateTime').textContent = `${this.selectedDate} - Select time`;
+                
                 if (this.selectedDate) {
+                    // Show loading message
+                    const container = document.getElementById('timeSlots');
+                    if (container) {
+                        container.innerHTML = '<div class="text-muted"><i class="fas fa-spinner fa-spin me-2"></i>Loading available times...</div>';
+                    }
                     this.loadAvailableTimes();
                 }
             });

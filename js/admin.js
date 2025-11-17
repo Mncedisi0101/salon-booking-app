@@ -26,6 +26,12 @@ class AdminDashboard {
             });
             const businesses = await businessesResponse.json();
             document.getElementById('totalBusinesses').textContent = businesses.length;
+            
+            // Update sidebar badge count for businesses
+            const businessesCountBadge = document.getElementById('businessesCount');
+            if (businessesCountBadge) {
+                businessesCountBadge.textContent = businesses.length;
+            }
 
             // Load appointments count
             const appointmentsResponse = await fetch('/api/admin/appointments', {
@@ -41,6 +47,12 @@ class AdminDashboard {
             const leads = await leadsResponse.json();
             const newLeads = leads.filter(lead => lead.status === 'new').length;
             document.getElementById('newLeads').textContent = newLeads;
+            
+            // Update sidebar badge count for leads (show total leads, not just new ones)
+            const leadsCountBadge = document.getElementById('leadsCount');
+            if (leadsCountBadge) {
+                leadsCountBadge.textContent = leads.length;
+            }
 
             // Calculate revenue (sum of all completed appointment prices)
             const revenue = appointments
@@ -61,6 +73,12 @@ class AdminDashboard {
             const businesses = await response.json();
             this.renderBusinesses(businesses);
             this.renderRecentBusinesses(businesses);
+            
+            // Update sidebar badge count
+            const businessesCountBadge = document.getElementById('businessesCount');
+            if (businessesCountBadge) {
+                businessesCountBadge.textContent = businesses.length;
+            }
 
         } catch (error) {
             console.error('Error loading businesses:', error);
@@ -200,6 +218,12 @@ class AdminDashboard {
             const leads = await response.json();
             this.renderLeads(leads);
             this.updateLeadsChart(leads);
+            
+            // Update sidebar badge count
+            const leadsCountBadge = document.getElementById('leadsCount');
+            if (leadsCountBadge) {
+                leadsCountBadge.textContent = leads.length;
+            }
 
         } catch (error) {
             console.error('Error loading leads:', error);
@@ -309,22 +333,23 @@ class AdminDashboard {
                     <div>${apt.customers?.name || 'N/A'}</div>
                     <small class="text-muted">${apt.customers?.phone || 'N/A'}</small>
                 </td>
-                <td>${apt.services?.name || 'N/A'}</td>
-                <td>${apt.stylists?.name || 'N/A'}</td>
+                <td>${apt.customers?.email || 'N/A'}</td>
                 <td>
                     <div>${new Date(apt.appointment_date).toLocaleDateString()}</div>
                     <small class="text-muted">${apt.appointment_time}</small>
                 </td>
-                <td>$${apt.services?.price || '0.00'}</td>
                 <td>
                     <span class="badge ${this.getAppointmentStatusBadgeClass(apt.status)}">
                         ${apt.status.charAt(0).toUpperCase() + apt.status.slice(1)}
                     </span>
                 </td>
                 <td>
-                    <button class="btn btn-sm btn-outline-primary view-appointment" data-id="${apt.id}">
-                        View
-                    </button>
+                    <select class="form-select form-select-sm appointment-status-select" data-id="${apt.id}">
+                        <option value="pending" ${apt.status === 'pending' ? 'selected' : ''}>Pending</option>
+                        <option value="confirmed" ${apt.status === 'confirmed' ? 'selected' : ''}>Confirmed</option>
+                        <option value="completed" ${apt.status === 'completed' ? 'selected' : ''}>Completed</option>
+                        <option value="cancelled" ${apt.status === 'cancelled' ? 'selected' : ''}>Cancelled</option>
+                    </select>
                 </td>
             `;
             tbody.appendChild(row);
@@ -344,28 +369,35 @@ class AdminDashboard {
     }
 
     attachAppointmentEventListeners() {
-        document.querySelectorAll('.view-appointment').forEach(button => {
-            button.addEventListener('click', (e) => {
+        document.querySelectorAll('.appointment-status-select').forEach(select => {
+            select.addEventListener('change', (e) => {
                 const appointmentId = e.target.dataset.id;
-                this.viewAppointmentDetails(appointmentId);
+                const newStatus = e.target.value;
+                this.updateAppointmentStatus(appointmentId, newStatus);
             });
         });
     }
 
-    async viewAppointmentDetails(appointmentId) {
+    async updateAppointmentStatus(appointmentId, status) {
         try {
-            const response = await fetch('/api/admin/appointments', {
-                headers: this.authManager.getAuthHeaders()
+            const response = await fetch(`/api/admin/appointments/${appointmentId}/status`, {
+                method: 'PUT',
+                headers: this.authManager.getAuthHeaders(),
+                body: JSON.stringify({ status })
             });
-            const appointments = await response.json();
-            const appointment = appointments.find(apt => apt.id === appointmentId);
 
-            if (appointment) {
-                // Create and show appointment details modal
-                this.showAppointmentModal(appointment);
+            const data = await response.json();
+
+            if (data.success) {
+                this.showNotification('Appointment status updated successfully!', 'success');
+                this.loadAppointments();
+                this.loadDashboardStats();
+            } else {
+                this.showNotification(data.error || 'Failed to update appointment status', 'error');
             }
         } catch (error) {
-            console.error('Error viewing appointment details:', error);
+            console.error('Error updating appointment status:', error);
+            this.showNotification('Failed to update appointment status', 'error');
         }
     }
 
@@ -557,7 +589,14 @@ class AdminDashboard {
         const rows = document.querySelectorAll('#leadsTableBody tr');
 
         rows.forEach(row => {
-            const status = row.querySelector('.badge').textContent.toLowerCase();
+            const badge = row.querySelector('.badge');
+            if (!badge) {
+                row.style.display = 'none';
+                return;
+            }
+            
+            const status = badge.textContent.trim().toLowerCase();
+            
             if (statusFilter === 'all' || status === statusFilter) {
                 row.style.display = '';
             } else {
@@ -572,8 +611,15 @@ class AdminDashboard {
         const rows = document.querySelectorAll('#allAppointmentsTableBody tr');
 
         rows.forEach(row => {
-            const status = row.querySelector('.badge').textContent.toLowerCase();
-            const date = row.cells[4].querySelector('div').textContent;
+            const badge = row.querySelector('.badge');
+            if (!badge) {
+                row.style.display = 'none';
+                return;
+            }
+            
+            const status = badge.textContent.trim().toLowerCase();
+            const dateCell = row.cells[3]?.querySelector('div'); // Changed from cells[4] to cells[3]
+            const date = dateCell ? dateCell.textContent : '';
             
             let showRow = true;
 
@@ -581,8 +627,12 @@ class AdminDashboard {
                 showRow = false;
             }
 
-            if (dateFilter && date !== new Date(dateFilter).toLocaleDateString()) {
-                showRow = false;
+            if (dateFilter && date) {
+                const rowDate = new Date(date).toLocaleDateString();
+                const filterDate = new Date(dateFilter).toLocaleDateString();
+                if (rowDate !== filterDate) {
+                    showRow = false;
+                }
             }
 
             row.style.display = showRow ? '' : 'none';
