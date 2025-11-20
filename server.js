@@ -1388,8 +1388,10 @@ app.put('/api/business/appointments/:id/status', authenticateToken, requireBusin
 
     // Send email notification for confirmed, cancelled, or completed appointments
     if (sanitizedStatus === 'confirmed' || sanitizedStatus === 'cancelled' || sanitizedStatus === 'completed') {
-      console.log('🔔 ✅ YES - Status requires email notification, fetching full appointment details...');
-      console.log('   Using database client:', supabaseAdmin ? 'ADMIN (service role)' : 'ANON (public)');
+      console.log('\n🔔 ===== EMAIL NOTIFICATION TRIGGERED =====');
+      console.log(`📋 Appointment ID: ${appointmentId}`);
+      console.log(`📝 New Status: ${sanitizedStatus}`);
+      console.log('🔧 Using database client:', supabaseAdmin ? 'ADMIN (service role)' : 'ANON (public)');
       
       // Fetch full appointment details with related data
       // Use admin client if available to ensure access to protected fields like customers.email
@@ -1407,44 +1409,36 @@ app.put('/api/business/appointments/:id/status', authenticateToken, requireBusin
         .single();
 
       if (fetchError) {
-        console.error('❌ Error fetching full appointment:', fetchError);
+        console.error('❌ Error fetching full appointment data:', fetchError);
       } else {
-        console.log('✓ Full appointment data fetched');
-        console.log('📋 Appointment ID:', fullAppointment?.id);
-        console.log('👤 Customer data:', JSON.stringify(fullAppointment?.customers, null, 2));
-        console.log('📧 Customer email:', fullAppointment?.customers?.email || '❌ MISSING');
+        console.log('✅ Full appointment data fetched successfully');
+        console.log('   Customer Name:', fullAppointment?.customers?.name || 'N/A');
+        console.log('   Customer Email:', fullAppointment?.customers?.email || '❌ MISSING');
+        console.log('   Business Name:', fullAppointment?.businesses?.business_name || 'N/A');
       }
 
       if (fullAppointment && fullAppointment.customers?.email) {
-        console.log('✅ Customer email found! Triggering email send for status:', sanitizedStatus);
+        console.log(`\n📧 Sending ${sanitizedStatus.toUpperCase()} email to: ${fullAppointment.customers.email}`);
+        console.log('⏰ Email will be sent asynchronously...\n');
+        
         // Send email asynchronously (don't wait for it to complete)
-        sendAppointmentEmail(fullAppointment, sanitizedStatus).catch(err => {
-          console.error('❌ Email sending failed:', err);
-          // Don't throw error - email failure shouldn't prevent status update
-        });
+        sendAppointmentEmail(fullAppointment, sanitizedStatus)
+          .then(info => {
+            if (info) {
+              console.log(`✅ Email queued successfully for ${sanitizedStatus} status`);
+            } else {
+              console.warn(`⚠️ Email function returned null for ${sanitizedStatus} status`);
+            }
+          })
+          .catch(err => {
+            console.error(`❌ Email sending failed for ${sanitizedStatus} status:`, err.message);
+          });
       } else {
-        console.warn('⚠️ Cannot send email: Missing appointment data or customer email');
-        console.warn('  fullAppointment exists?', !!fullAppointment);
-        console.warn('  customers object exists?', !!fullAppointment?.customers);
-        console.warn('  email exists?', !!fullAppointment?.customers?.email);
-        // Fallback: notify business email so we can validate end-to-end delivery
-        try {
-          const businessEmail = fullAppointment?.businesses?.email || process.env.EMAIL_FROM || process.env.EMAIL_USER;
-          if (businessEmail) {
-            console.log('📨 Fallback: sending notification to business email:', businessEmail);
-            const fallback = {
-              ...fullAppointment,
-              customers: { name: 'Customer', email: businessEmail },
-            };
-            sendAppointmentEmail(fallback, sanitizedStatus).catch(err => {
-              console.error('❌ Fallback email sending failed:', err?.message || err);
-            });
-          } else {
-            console.warn('⚠️ No fallback business email available. Skipping email send.');
-          }
-        } catch (e) {
-          console.warn('⚠️ Fallback email attempt threw an error:', e?.message || e);
-        }
+        console.error('\n❌ CANNOT SEND EMAIL - Missing required data:');
+        console.error('   fullAppointment exists?', !!fullAppointment);
+        console.error('   customers object exists?', !!fullAppointment?.customers);
+        console.error('   customer email exists?', !!fullAppointment?.customers?.email);
+        console.error('=========================================\n');
       }
     } else {
       console.log(`ℹ️ Status '${sanitizedStatus}' does not require email notification`);
