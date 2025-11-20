@@ -585,17 +585,36 @@
                 const button = document.getElementById(buttonId);
                 const input = document.getElementById(inputId);
                 
+                console.log('Setting up password toggle for:', buttonId, 'Found button:', !!button, 'Found input:', !!input);
+                
                 if (button && input) {
-                    button.addEventListener('click', function() {
-                        const type = input.getAttribute('type') === 'password' ? 'text' : 'password';
-                        input.setAttribute('type', type);
+                    button.addEventListener('click', function(e) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        
+                        console.log('Password toggle clicked:', buttonId);
+                        
+                        const currentType = input.getAttribute('type');
+                        const newType = currentType === 'password' ? 'text' : 'password';
+                        input.setAttribute('type', newType);
+                        
+                        console.log('Changed type from', currentType, 'to', newType);
                         
                         const icon = button.querySelector('i');
                         if (icon) {
-                            icon.classList.toggle('fa-eye');
-                            icon.classList.toggle('fa-eye-slash');
+                            if (newType === 'text') {
+                                icon.classList.remove('fa-eye');
+                                icon.classList.add('fa-eye-slash');
+                            } else {
+                                icon.classList.remove('fa-eye-slash');
+                                icon.classList.add('fa-eye');
+                            }
+                            console.log('Icon classes updated:', icon.className);
                         }
                     });
+                    console.log('✅ Event listener attached to:', buttonId);
+                } else {
+                    console.error('❌ Could not find button or input for:', buttonId);
                 }
             });
 
