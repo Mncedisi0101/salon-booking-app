@@ -208,7 +208,9 @@ function createEmailTransporter() {
  */
 async function sendAppointmentEmail(appointment, status) {
   try {
-    console.log('🔔 Starting email send process...');
+    console.log('\n========================================');
+    console.log('🔔 EMAIL SEND PROCESS STARTED');
+    console.log('========================================');
     console.log('Status:', status);
     console.log('Appointment ID:', appointment?.id);
     
@@ -220,30 +222,33 @@ async function sendAppointmentEmail(appointment, status) {
     const businessEmail = appointment.businesses?.email;
     const businessName = appointment.businesses?.business_name || 'Our Business';
     
-    console.log('📧 Email Configuration Check:');
-    console.log('  Email User:', emailUser ? '✓ Set' : '✗ Missing');
-    console.log('  Email Password:', emailPassword ? '✓ Set' : '✗ Missing');
-    console.log('  Email Service:', process.env.EMAIL_SERVICE || 'gmail (default)');
+    console.log('\n📧 EMAIL CONFIGURATION:');
+    console.log('  EMAIL_USER:', emailUser ? `✓ ${emailUser}` : '✗ MISSING');
+    console.log('  EMAIL_PASSWORD:', emailPassword ? '✓ Set (hidden)' : '✗ MISSING');
+    console.log('  EMAIL_SERVICE:', process.env.EMAIL_SERVICE || 'gmail (default)');
     console.log('  Business Email:', businessEmail || '✗ Not available');
     
     if (!emailUser || !emailPassword) {
-      console.warn('❌ Email not configured. Set EMAIL_USER and EMAIL_PASSWORD in environment variables.');
+      console.error('\n❌ CANNOT SEND EMAIL - Missing credentials!');
+      console.error('Set EMAIL_USER and EMAIL_PASSWORD in environment variables.');
       return;
     }
 
     const customerEmail = appointment.customers?.email;
     const customerName = appointment.customers?.name || 'Valued Customer';
     
-    console.log('👤 Customer Info:');
+    console.log('\n👤 CUSTOMER INFORMATION:');
     console.log('  Name:', customerName);
-    console.log('  Email:', customerEmail || '✗ Missing');
-    console.log('  📧 Will send TO:', customerEmail);
-    console.log('  📤 Will send FROM:', emailFrom);
+    console.log('  Email:', customerEmail || '❌ MISSING - CANNOT SEND EMAIL!');
     
     if (!customerEmail) {
-      console.warn('❌ Customer email not available');
+      console.error('\n❌ CANNOT SEND EMAIL - Customer email not available!');
+      console.error('This usually means RLS is blocking access to customer data.');
+      console.error('Check if SUPABASE_SERVICE_KEY is set in environment variables.');
       return;
     }
+    
+    console.log('\n✅ All required data available - proceeding with email...');
 
     // Format appointment date
     const appointmentDate = new Date(appointment.appointment_date);
@@ -385,24 +390,24 @@ ${businessName}
 For any questions or changes, please reply to this email or contact us at ${businessPhone || businessEmail}.
     `;
 
-    console.log('📤 Sending email...');
+    console.log('📤 Preparing to send email...');
     console.log('  To:', customerEmail);
-    console.log('  Business Email (Display):', businessEmail);
+    console.log('  From (Auth):', emailUser);
+    console.log('  Business Email:', businessEmail);
     console.log('  Reply-To:', businessEmail);
     console.log('  Subject:', subject);
 
     // Create transporter and send email
     const transporter = createEmailTransporter();
     
-    // Use business email in the display name for better presentation
-    // The actual sending email (emailUser) is required by Gmail for authentication
-    // but we make it less prominent by using business email in display name
+    // Keep showing both emails as requested by user
+    // Gmail will authenticate with emailUser but we display business email too
     const fromAddress = businessEmail 
       ? `"${businessName}" <${businessEmail}>` 
       : `"${businessName}" <${emailUser}>`;
     
     const mailOptions = {
-      from: fromAddress, // Display business email prominently
+      from: fromAddress, // Shows business email (even if Gmail rewrites it)
       replyTo: businessEmail || emailUser, // Replies go to business owner
       to: customerEmail,
       subject: subject,
@@ -410,28 +415,33 @@ For any questions or changes, please reply to this email or contact us at ${busi
       html: htmlBody
     };
 
-    console.log('📬 Final mail options:', {
-      from: mailOptions.from,
-      replyTo: mailOptions.replyTo,
-      to: mailOptions.to,
-      subject: mailOptions.subject
-    });
+    console.log('📬 Final mail options:');
+    console.log('   from:', mailOptions.from);
+    console.log('   replyTo:', mailOptions.replyTo);
+    console.log('   to:', mailOptions.to);
+    console.log('   subject:', mailOptions.subject);
+    console.log('');
+    console.log('🚀 Attempting to send email now...');
 
     const info = await transporter.sendMail(mailOptions);
 
-    console.log('✅ Email sent successfully!');
-    console.log('📨 Sent to:', customerEmail);
-    console.log('Message ID:', info.messageId);
-    console.log('Response:', info.response);
+    console.log('\n✅ ✅ ✅ EMAIL SENT SUCCESSFULLY! ✅ ✅ ✅');
+    console.log('📨 Recipient:', customerEmail);
+    console.log('📧 Message ID:', info.messageId);
+    console.log('📬 Response:', info.response);
+    console.log('========================================\n');
     return info;
   } catch (error) {
-    console.error('❌ Error sending email:', error);
-    console.error('Error details:', {
-      message: error.message,
-      code: error.code,
-      response: error.response
-    });
-    throw error;
+    console.error('\n❌ ❌ ❌ EMAIL SEND FAILED! ❌ ❌ ❌');
+    console.error('Error message:', error.message);
+    console.error('Error code:', error.code);
+    console.error('Error response:', error.response);
+    console.error('Full error:', error);
+    console.error('========================================\n');
+    
+    // Don't throw - just log the error
+    // We don't want email failures to break appointment status updates
+    return null;
   }
 }
 
