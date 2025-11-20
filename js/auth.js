@@ -447,10 +447,24 @@ document.addEventListener('DOMContentLoaded', function() {
     if (businessRegisterForm) {
         businessRegisterForm.addEventListener('submit', function(e) {
             e.preventDefault();
+            
+            // Validate phone number format (must start with country code +)
+            const phone = document.getElementById('businessPhone').value.trim();
+            const phoneRegex = /^\+\d{1,3}[\s\-]?\d{6,14}$/;
+            
+            if (!phoneRegex.test(phone)) {
+                if (typeof loadingManager !== 'undefined') {
+                    loadingManager.showNotification('Phone number must start with country code (e.g., +27 123456789)', 'error');
+                } else {
+                    alert('Phone number must start with country code (e.g., +27 123456789)');
+                }
+                return;
+            }
+            
             const formData = {
                 ownerName: document.getElementById('ownerName').value,
                 businessName: document.getElementById('businessName').value,
-                phone: document.getElementById('businessPhone').value,
+                phone: phone,
                 email: document.getElementById('businessEmail').value,
                 password: document.getElementById('businessPassword').value
             };

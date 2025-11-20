@@ -574,49 +574,57 @@
                 });
             }
 
-            // Password toggle handlers
-            const toggleButtons = [
-                { buttonId: 'toggleLoginPassword', inputId: 'loginPassword' },
-                { buttonId: 'toggleSignupPassword', inputId: 'signupPassword' },
-                { buttonId: 'toggleConfirmPassword', inputId: 'confirmPassword' }
-            ];
-
-            toggleButtons.forEach(({ buttonId, inputId }) => {
+            // Password toggle handlers - Setup with direct references
+            function setupPasswordToggle(buttonId, inputId) {
                 const button = document.getElementById(buttonId);
                 const input = document.getElementById(inputId);
                 
-                console.log('Setting up password toggle for:', buttonId, 'Found button:', !!button, 'Found input:', !!input);
+                console.log(`🔧 Setting up ${buttonId}:`, { button: !!button, input: !!input });
                 
-                if (button && input) {
-                    button.addEventListener('click', function(e) {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        
-                        console.log('Password toggle clicked:', buttonId);
-                        
-                        const currentType = input.getAttribute('type');
-                        const newType = currentType === 'password' ? 'text' : 'password';
-                        input.setAttribute('type', newType);
-                        
-                        console.log('Changed type from', currentType, 'to', newType);
-                        
-                        const icon = button.querySelector('i');
-                        if (icon) {
-                            if (newType === 'text') {
-                                icon.classList.remove('fa-eye');
-                                icon.classList.add('fa-eye-slash');
-                            } else {
-                                icon.classList.remove('fa-eye-slash');
-                                icon.classList.add('fa-eye');
-                            }
-                            console.log('Icon classes updated:', icon.className);
-                        }
-                    });
-                    console.log('✅ Event listener attached to:', buttonId);
-                } else {
-                    console.error('❌ Could not find button or input for:', buttonId);
+                if (!button || !input) {
+                    console.error(`❌ Missing elements for ${buttonId}`);
+                    return;
                 }
-            });
+                
+                // Remove any existing listeners by cloning
+                const newButton = button.cloneNode(true);
+                button.parentNode.replaceChild(newButton, button);
+                
+                newButton.addEventListener('click', function(event) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    
+                    console.log(`👁️ Toggle clicked for ${buttonId}`);
+                    
+                    // Toggle input type
+                    const isPassword = input.type === 'password';
+                    input.type = isPassword ? 'text' : 'password';
+                    
+                    console.log(`   Changed from ${isPassword ? 'password' : 'text'} to ${input.type}`);
+                    
+                    // Toggle icon
+                    const icon = newButton.querySelector('i');
+                    if (icon) {
+                        if (isPassword) {
+                            // Showing password - show eye-slash
+                            icon.classList.remove('fa-eye');
+                            icon.classList.add('fa-eye-slash');
+                        } else {
+                            // Hiding password - show eye
+                            icon.classList.remove('fa-eye-slash');
+                            icon.classList.add('fa-eye');
+                        }
+                        console.log(`   Icon updated: ${icon.className}`);
+                    }
+                }, false);
+                
+                console.log(`✅ Password toggle ready for ${buttonId}`);
+            }
+            
+            // Setup all password toggles
+            setupPasswordToggle('toggleLoginPassword', 'loginPassword');
+            setupPasswordToggle('toggleSignupPassword', 'signupPassword');
+            setupPasswordToggle('toggleConfirmPassword', 'confirmPassword');
 
             // Form handlers
             const loginFormElement = document.getElementById('loginFormElement');

@@ -204,8 +204,13 @@
                     <input type="text" id="businessName" name="businessName" required>
                 </div>
                 <div class="form-group">
-                    <label for="businessPhone">Phone Number *</label>
-                    <input type="tel" id="businessPhone" name="businessPhone" required>
+                    <label for="businessPhone">Phone Number (with country code) *</label>
+                    <input type="tel" id="businessPhone" name="businessPhone" 
+                           pattern="^\+\d{1,3}[\s\-]?\d{6,14}$" 
+                           placeholder="+27 123456789" 
+                           title="Phone must start with country code (e.g., +27 for South Africa)"
+                           required>
+                    <small style="color: #666; font-size: 0.85em;">Format: +CountryCode PhoneNumber (e.g., +27 123456789)</small>
                 </div>
                 <div class="form-group">
                     <label for="businessEmail">Email *</label>

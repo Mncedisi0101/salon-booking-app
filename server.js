@@ -43,7 +43,8 @@ const validateEmail = (email) => {
 };
 
 const validatePhone = (phone) => {
-  const phoneRegex = /^[\d\s\-\+\(\)]{10,}$/;
+  // Require phone to start with + (country code), followed by digits (10-15 total digits)
+  const phoneRegex = /^\+\d{1,3}[\s\-]?\d{6,14}$/;
   return phoneRegex.test(phone);
 };
 
@@ -181,31 +182,7 @@ function createEmailTransporter() {
   return nodemailer.createTransport(config);
 }
 
-/**
- * Email sending helper function
- * 
- * IMPORTANT: Email Provider Configuration
- * ---------------------------------------
- * Gmail Limitation: Gmail does not allow sending emails with a "from" address 
- * different from your authenticated account. Gmail will automatically rewrite 
- * the "from" field to match your EMAIL_USER regardless of what you specify.
- * 
- * Solution: We prominently display the business email in:
- * 1. The email header section (visible to recipients)
- * 2. The display name in the from field
- * 3. The reply-to address (so replies go to the business)
- * 4. Contact information throughout the email body
- * 
- * For better control over the "from" address, consider using:
- * - SendGrid (supports custom from addresses)
- * - AWS SES (supports verified custom domains)
- * - Mailgun (supports custom domains)
- * 
- * Environment Variables Required:
- * - EMAIL_USER: Your Gmail/SMTP username
- * - EMAIL_PASSWORD: Your Gmail app password or SMTP password
- * - EMAIL_SERVICE: 'gmail' (default) or other service name
- */
+
 async function sendAppointmentEmail(appointment, status) {
   try {
     console.log('\n========================================');
