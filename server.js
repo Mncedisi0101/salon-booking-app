@@ -457,6 +457,14 @@ app.get('/admin', (req, res) => {
   res.sendFile(__dirname + '/views/admin.html');
 });
 
+app.get('/terms', (req, res) => {
+  res.sendFile(__dirname + '/views/terms.html');
+});
+
+app.get('/privacy', (req, res) => {
+  res.sendFile(__dirname + '/views/privacy.html');
+});
+
 // Health check
 app.get('/api/health', async (req, res) => {
   try {
