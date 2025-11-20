@@ -149,16 +149,63 @@ const requireAdminAuth = (req, res, next) => {
 
 // Create Nodemailer transporter
 function createEmailTransporter() {
-  return nodemailer.createTransport({
-    service: process.env.EMAIL_SERVICE || 'gmail',
+  const emailService = process.env.EMAIL_SERVICE || 'gmail';
+  
+  // Base configuration
+  const config = {
+    service: emailService,
     auth: {
       user: process.env.EMAIL_USER,
       pass: process.env.EMAIL_PASSWORD
     }
-  });
+  };
+  
+  // For Gmail, we need to handle the "from" address limitation
+  // Gmail will rewrite the from address to the authenticated user
+  // To work around this, we can use SMTP with custom host
+  if (emailService.toLowerCase() === 'gmail' && process.env.EMAIL_USE_SMTP === 'true') {
+    return nodemailer.createTransport({
+      host: 'smtp.gmail.com',
+      port: 587,
+      secure: false, // Use TLS
+      auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASSWORD
+      },
+      tls: {
+        rejectUnauthorized: false
+      }
+    });
+  }
+  
+  return nodemailer.createTransport(config);
 }
 
-// Email sending helper function
+/**
+ * Email sending helper function
+ * 
+ * IMPORTANT: Email Provider Configuration
+ * ---------------------------------------
+ * Gmail Limitation: Gmail does not allow sending emails with a "from" address 
+ * different from your authenticated account. Gmail will automatically rewrite 
+ * the "from" field to match your EMAIL_USER regardless of what you specify.
+ * 
+ * Solution: We prominently display the business email in:
+ * 1. The email header section (visible to recipients)
+ * 2. The display name in the from field
+ * 3. The reply-to address (so replies go to the business)
+ * 4. Contact information throughout the email body
+ * 
+ * For better control over the "from" address, consider using:
+ * - SendGrid (supports custom from addresses)
+ * - AWS SES (supports verified custom domains)
+ * - Mailgun (supports custom domains)
+ * 
+ * Environment Variables Required:
+ * - EMAIL_USER: Your Gmail/SMTP username
+ * - EMAIL_PASSWORD: Your Gmail app password or SMTP password
+ * - EMAIL_SERVICE: 'gmail' (default) or other service name
+ */
 async function sendAppointmentEmail(appointment, status) {
   try {
     console.log('🔔 Starting email send process...');
@@ -169,10 +216,9 @@ async function sendAppointmentEmail(appointment, status) {
     const emailUser = process.env.EMAIL_USER;
     const emailPassword = process.env.EMAIL_PASSWORD;
     
-    // Use business owner's email as the sender (reply-to email)
+    // Get business contact information for display and reply-to
     const businessEmail = appointment.businesses?.email;
     const businessName = appointment.businesses?.business_name || 'Our Business';
-    const emailFrom = businessEmail || emailUser; // Fallback to system email if business email not available
     
     console.log('📧 Email Configuration Check:');
     console.log('  Email User:', emailUser ? '✓ Set' : '✗ Missing');
@@ -250,33 +296,44 @@ async function sendAppointmentEmail(appointment, status) {
       <html>
       <head>
         <style>
-          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; }
           .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-          .header { background: ${getHeaderColor(status)}; color: white; padding: 20px; text-align: center; border-radius: 5px 5px 0 0; }
-          .content { background: #f9f9f9; padding: 30px; border: 1px solid #ddd; border-top: none; }
+          .business-header { background: #f8f9fa; padding: 15px 20px; border-bottom: 3px solid ${getHeaderColor(status)}; }
+          .business-name { font-size: 20px; font-weight: bold; color: #333; margin: 0; }
+          .business-contact { font-size: 14px; color: #666; margin: 5px 0 0 0; }
+          .business-contact a { color: #0066cc; text-decoration: none; }
+          .header { background: ${getHeaderColor(status)}; color: white; padding: 20px; text-align: center; }
+          .content { background: #f9f9f9; padding: 30px; border: 1px solid #ddd; }
           .details { background: white; padding: 20px; margin: 20px 0; border-radius: 5px; border-left: 4px solid ${getHeaderColor(status)}; }
           .detail-row { margin: 10px 0; }
           .label { font-weight: bold; color: #555; }
-          .footer { text-align: center; padding: 20px; color: #777; font-size: 12px; }
+          .footer { background: #f8f9fa; text-align: center; padding: 20px; color: #777; font-size: 12px; border-top: 1px solid #ddd; }
+          .contact-info { background: white; padding: 15px; margin: 20px 0; border-radius: 5px; text-align: center; border: 1px solid #e0e0e0; }
         </style>
       </head>
       <body>
         <div class="container">
+          <div class="business-header">
+            <div class="business-name">${businessName}</div>
+            <div class="business-contact">
+              ${businessEmail ? `<span>📧 <a href="mailto:${businessEmail}">${businessEmail}</a></span>` : ''}
+              ${businessEmail && businessPhone ? ' | ' : ''}
+              ${businessPhone ? `<span>📞 ${businessPhone}</span>` : ''}
+            </div>
+          </div>
           <div class="header">
-            <h1>${getHeaderIcon(status)} ${getHeaderTitle(status)}</h1>
+            <h1 style="margin: 0;">${getHeaderIcon(status)} ${getHeaderTitle(status)}</h1>
           </div>
           <div class="content">
             <p>Dear ${customerName},</p>
             <p>${statusMessage}</p>
             
             <div class="details">
-              <h3>Appointment Details</h3>
-              <div class="detail-row"><span class="label">Business:</span> ${businessName}</div>
+              <h3 style="margin-top: 0;">Appointment Details</h3>
               <div class="detail-row"><span class="label">Service:</span> ${serviceName}</div>
               <div class="detail-row"><span class="label">Stylist:</span> ${stylistName}</div>
               <div class="detail-row"><span class="label">Date:</span> ${formattedDate}</div>
               <div class="detail-row"><span class="label">Time:</span> ${appointmentTime}</div>
-              ${businessPhone ? `<div class="detail-row"><span class="label">Contact:</span> ${businessPhone}</div>` : ''}
             </div>
             
             ${status === 'confirmed' 
@@ -285,10 +342,17 @@ async function sendAppointmentEmail(appointment, status) {
               ? '<p>If you have any questions, please contact us.</p>'
               : '<p>Thank you for choosing us! We hope you enjoyed your experience and look forward to serving you again soon.</p>'}
             
-            <p>Best regards,<br>${businessName}</p>
+            <div class="contact-info">
+              <strong>Need to reach us?</strong><br>
+              ${businessEmail ? `Email: <a href="mailto:${businessEmail}">${businessEmail}</a><br>` : ''}
+              ${businessPhone ? `Phone: ${businessPhone}` : ''}
+            </div>
+            
+            <p>Best regards,<br><strong>${businessName}</strong></p>
           </div>
           <div class="footer">
-            <p>For any questions or changes, please reply to this email or contact us at ${businessPhone || businessEmail}.</p>
+            <p>This is an automated message from ${businessName}.</p>
+            <p style="margin: 5px 0;">You can reply to this email or contact us directly.</p>
           </div>
         </div>
       </body>
@@ -323,15 +387,23 @@ For any questions or changes, please reply to this email or contact us at ${busi
 
     console.log('📤 Sending email...');
     console.log('  To:', customerEmail);
-    console.log('  From:', emailFrom);
+    console.log('  Business Email (Display):', businessEmail);
     console.log('  Reply-To:', businessEmail);
     console.log('  Subject:', subject);
 
     // Create transporter and send email
     const transporter = createEmailTransporter();
+    
+    // Use business email in the display name for better presentation
+    // The actual sending email (emailUser) is required by Gmail for authentication
+    // but we make it less prominent by using business email in display name
+    const fromAddress = businessEmail 
+      ? `"${businessName}" <${businessEmail}>` 
+      : `"${businessName}" <${emailUser}>`;
+    
     const mailOptions = {
-      from: `"${businessName}" <${emailUser}>`, // Send from your configured Gmail
-      replyTo: businessEmail, // Replies go to business owner
+      from: fromAddress, // Display business email prominently
+      replyTo: businessEmail || emailUser, // Replies go to business owner
       to: customerEmail,
       subject: subject,
       text: textBody,

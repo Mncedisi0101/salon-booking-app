@@ -25,11 +25,31 @@ class AuthManager {
                 this.currentUser = data.user;
                 this.updateUIForLoggedInUser();
             } else {
-                this.logout();
+                // Don't logout if on customerauth page - allow guest access
+                const isCustomerAuthPage = window.location.pathname === '/customerauth' || 
+                                          window.location.pathname.startsWith('/customerauth');
+                if (isCustomerAuthPage) {
+                    // Clear invalid token but stay on customerauth page
+                    this.token = null;
+                    this.currentUser = null;
+                    localStorage.removeItem('authToken');
+                } else {
+                    this.logout();
+                }
             }
         } catch (error) {
             console.error('Token verification error:', error);
-            this.logout();
+            // Don't logout if on customerauth page - allow guest access
+            const isCustomerAuthPage = window.location.pathname === '/customerauth' || 
+                                      window.location.pathname.startsWith('/customerauth');
+            if (isCustomerAuthPage) {
+                // Clear invalid token but stay on customerauth page
+                this.token = null;
+                this.currentUser = null;
+                localStorage.removeItem('authToken');
+            } else {
+                this.logout();
+            }
         }
     }
 
@@ -45,16 +65,28 @@ class AuthManager {
                 window.location.href = '/admin';
             }
         } else if (role === 'customer') {
-            // Customers typically use /customer; do not force redirect if already there
-            if (!path.startsWith('/customer')) {
-                // Optional: avoid redirecting from marketing/index
-                window.location.href = '/customer';
+            // If customer is on customerauth page, redirect to customer booking page with business ID
+            if (path === '/customerauth' || path.startsWith('/customerauth')) {
+                const urlParams = new URLSearchParams(window.location.search);
+                const businessId = urlParams.get('business');
+                if (businessId) {
+                    window.location.href = `/customer?business=${businessId}`;
+                } else {
+                    window.location.href = '/customer';
+                }
             }
+            // Customers can stay on /customer pages without forced redirect
         }
     }
 
     updateUIForLoggedOutUser() {
-        if (window.location.pathname !== '/' && !window.location.pathname.includes('/customer')) {
+        const path = window.location.pathname;
+        // Allow guest access to customerauth, customer pages, and index
+        const allowedPaths = ['/', '/customerauth', '/customer', '/terms.html', '/privacy.html'];
+        const isAllowedPath = allowedPaths.some(allowed => path === allowed || path.startsWith(allowed));
+        
+        if (!isAllowedPath) {
+            // Only redirect if on restricted pages (business/admin)
             window.location.href = '/';
         }
     }
@@ -353,7 +385,30 @@ class AuthManager {
         this.token = null;
         this.currentUser = null;
         localStorage.removeItem('authToken');
-        window.location.href = '/';
+        
+        const path = window.location.pathname;
+        // If on customerauth page, preserve business ID and reload page
+        if (path === '/customerauth' || path.startsWith('/customerauth')) {
+            const urlParams = new URLSearchParams(window.location.search);
+            const businessId = urlParams.get('business');
+            if (businessId) {
+                // Stay on customerauth page with business ID
+                window.location.href = `/customerauth?business=${businessId}`;
+            } else {
+                window.location.href = '/';
+            }
+        } else if (path.startsWith('/customer')) {
+            // If on customer page, preserve business ID
+            const urlParams = new URLSearchParams(window.location.search);
+            const businessId = urlParams.get('business');
+            if (businessId) {
+                window.location.href = `/customerauth?business=${businessId}`;
+            } else {
+                window.location.href = '/';
+            }
+        } else {
+            window.location.href = '/';
+        }
     }
 
     getAuthHeaders() {
