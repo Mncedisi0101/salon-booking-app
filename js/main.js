@@ -96,9 +96,14 @@ class MainApp {
         setupPasswordToggle('confirmPassword', 'toggleConfirmPassword');
 
         // Form submission handlers
+        // Note: loginFormElement handler is now in customerauth.html inline script
+        // to properly handle business ID from URL params and validation
+        // This prevents duplicate form submissions
         const loginFormElement = document.getElementById('loginFormElement');
         if (loginFormElement) {
-            // Restore remembered email if exists
+            console.log('ℹ️ Login form found - handler is in customerauth.html inline script');
+            
+            // Keep the remembered email restoration functionality here
             const rememberedCustomerEmail = localStorage.getItem('rememberedCustomerEmail');
             if (rememberedCustomerEmail) {
                 const emailInput = document.getElementById('loginEmail');
@@ -107,77 +112,18 @@ class MainApp {
                 if (rememberCheckbox) rememberCheckbox.checked = true;
             }
             
-            loginFormElement.addEventListener('submit', async (e) => {
-                e.preventDefault();
-
-                const email = document.getElementById('loginEmail').value;
-                const password = document.getElementById('loginPassword').value;
-                const rememberMe = document.getElementById('rememberMeLogin')?.checked || false;
-
-                // Show loading overlay
-                const loadingOverlay = document.getElementById('loadingOverlay');
-                if (loadingOverlay) loadingOverlay.style.display = 'flex';
-
-                try {
-                    const success = await authManager.customerLogin(email, password, rememberMe);
-
-                    if (success) {
-                        // Redirect to booking page after successful login
-                        window.location.href = businessId ? `/customer?business=${businessId}` : '/customer';
-                    }
-                } catch (error) {
-                    console.error('Login error:', error);
-                    alert('Login failed. Please try again.');
-                } finally {
-                    if (loadingOverlay) loadingOverlay.style.display = 'none';
-                }
-            });
+            // Event listener removed to prevent duplicate submissions
+            // The inline script in customerauth.html handles this form with proper business ID validation
         }
 
+        // Note: signupFormElement handler is now in customerauth.html inline script
+        // to properly handle business ID from URL params
+        // This prevents duplicate form submissions
         const signupFormElement = document.getElementById('signupFormElement');
         if (signupFormElement) {
-            signupFormElement.addEventListener('submit', async (e) => {
-                e.preventDefault();
-
-                // Get form values
-                const firstName = document.getElementById('signupFirstName').value;
-                const lastName = document.getElementById('signupLastName').value;
-                const email = document.getElementById('signupEmail').value;
-                const phone = document.getElementById('signupPhone').value;
-                const password = document.getElementById('signupPassword').value;
-                const confirmPassword = document.getElementById('confirmPassword').value;
-
-                // Validate password match
-                if (password !== confirmPassword) {
-                    alert('Passwords do not match!');
-                    return;
-                }
-
-                // Show loading overlay
-                const loadingOverlay = document.getElementById('loadingOverlay');
-                if (loadingOverlay) loadingOverlay.style.display = 'flex';
-
-                try {
-                    const customerData = {
-                        name: `${firstName} ${lastName}`,
-                        email: email,
-                        phone: phone,
-                        password: password
-                    };
-
-                    const success = await authManager.customerRegister(customerData);
-
-                    if (success) {
-                        // Redirect to booking page after successful signup
-                        window.location.href = businessId ? `/customer?business=${businessId}` : '/customer';
-                    }
-                } catch (error) {
-                    console.error('Registration error:', error);
-                    alert('Registration failed. Please try again.');
-                } finally {
-                    if (loadingOverlay) loadingOverlay.style.display = 'none';
-                }
-            });
+            console.log('ℹ️ Signup form found - handler is in customerauth.html inline script');
+            // Event listener removed to prevent duplicate submissions
+            // The inline script in customerauth.html handles this form with proper business ID validation
         }
 
         // Social login buttons (placeholder functionality)

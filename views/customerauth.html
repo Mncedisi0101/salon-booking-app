@@ -209,33 +209,43 @@
         
         .password-toggle {
             position: absolute;
-            right: 12px;
-            top: 50%;
-            transform: translateY(-50%);
+            right: 10px;
+            bottom: 8px;
             background: none;
             border: none;
             color: #6c757d;
             cursor: pointer;
-            padding: 8px;
+            padding: 6px 8px;
             z-index: 10;
-            transition: color 0.2s ease;
+            transition: all 0.2s ease;
             display: flex;
             align-items: center;
             justify-content: center;
             line-height: 1;
+            height: 38px;
+            width: 38px;
         }
         
         .password-toggle:hover {
             color: var(--primary-color);
+            background-color: rgba(13, 110, 253, 0.05);
+            border-radius: 4px;
         }
         
         .password-toggle:focus {
-            outline: none;
+            outline: 2px solid var(--primary-color);
+            outline-offset: 2px;
             color: var(--primary-color);
+            border-radius: 4px;
+        }
+        
+        .password-toggle:active {
+            background-color: rgba(13, 110, 253, 0.1);
         }
         
         .password-toggle i {
-            font-size: 16px;
+            font-size: 18px;
+            pointer-events: none;
         }
         
         @media (max-width: 768px) {
@@ -245,8 +255,15 @@
             }
             
             .password-toggle {
-                right: 10px;
-                padding: 10px;
+                right: 8px;
+                bottom: 6px;
+                height: 42px;
+                width: 42px;
+                padding: 8px 10px;
+            }
+            
+            .password-toggle i {
+                font-size: 20px;
             }
         }
     </style>
@@ -716,20 +733,26 @@
                     }
 
                     try {
+                        console.log('📝 Sending registration request...');
                         const response = await fetch('/api/customer/register', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify(formData)
                         });
 
+                        console.log('📬 Response status:', response.status, response.ok);
                         const data = await response.json();
+                        console.log('📦 Response data:', data);
 
                         if (response.ok && data.success) {
                             // Registration successful
+                            console.log('✅ Registration successful!');
                             localStorage.setItem('authToken', data.token);
 
                             if (typeof loadingManager !== 'undefined') {
                                 loadingManager.showNotification('Registration successful! Redirecting...', 'success');
+                            } else {
+                                alert('Registration successful! Redirecting...');
                             }
 
                             // Redirect to customer booking page with business ID
@@ -737,21 +760,26 @@
                                 window.location.href = `/customer?business=${businessId}`;
                             }, 1000);
                         } else {
-                            // Registration failed - show appropriate error message
+                            // Registration failed - DO NOT redirect
+                            console.error('❌ Registration failed:', data.error);
                             const errorMessage = data.error || 'Registration failed. Please try again.';
                             if (typeof loadingManager !== 'undefined') {
                                 loadingManager.showNotification(errorMessage, 'error');
                             } else {
                                 alert(errorMessage);
                             }
+                            // Make sure we don't redirect on failure
+                            return;
                         }
                     } catch (error) {
-                        console.error('Registration error:', error);
+                        console.error('❌ Registration error:', error);
                         if (typeof loadingManager !== 'undefined') {
                             loadingManager.showNotification('Registration failed. Please check your connection and try again.', 'error');
                         } else {
                             alert('Registration failed. Please try again.');
                         }
+                        // Make sure we don't redirect on error
+                        return;
                     } finally {
                         if (typeof loadingManager !== 'undefined') {
                             loadingManager.hide();
