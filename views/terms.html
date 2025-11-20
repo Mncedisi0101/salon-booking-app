@@ -144,7 +144,7 @@
 
     <div class="container">
         <div class="content-wrapper">
-            <a href="#" onclick="window.history.back(); return false;" class="btn-back">
+            <a href="#" onclick="navigateBack(); return false;" class="btn-back">
                 <i class="fas fa-arrow-left me-2"></i>Back
             </a>
 
@@ -546,7 +546,7 @@
             </div>
 
             <div class="text-center mt-4">
-                <a href="#" onclick="window.history.back(); return false;" class="btn-back">
+                <a href="#" onclick="navigateBack(); return false;" class="btn-back">
                     <i class="fas fa-arrow-left me-2"></i>Return to Registration
                 </a>
             </div>
@@ -570,5 +570,23 @@
     </footer>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        function navigateBack() {
+            // Try to get business ID from referrer URL
+            const referrer = document.referrer;
+            if (referrer && referrer.includes('customerauth')) {
+                window.location.href = referrer;
+            } else {
+                // Fallback: check if there's a business ID in localStorage or just go to customerauth
+                const urlParams = new URLSearchParams(window.location.search);
+                const businessId = urlParams.get('business');
+                if (businessId) {
+                    window.location.href = `/customerauth?business=${businessId}`;
+                } else {
+                    window.location.href = '/customerauth';
+                }
+            }
+        }
+    </script>
 </body>
 </html>
