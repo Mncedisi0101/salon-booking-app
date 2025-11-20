@@ -427,19 +427,8 @@
         </div>
     </footer>
 
-    <!-- Loading Overlay -->
-    <div class="loading-overlay" id="loadingOverlay" style="display: none;">
-        <div class="loading-spinner">
-            <div class="spinner-border text-primary" role="status">
-                <span class="visually-hidden">Loading...</span>
-            </div>
-            <p class="mt-3">Processing your request...</p>
-        </div>
-    </div>
-
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
     <script src="/js/utils.js"></script>
-    <script src="/js/auth.js"></script>
     <script src="/js/main.js"></script>
     <script>
         // Load business information from URL
@@ -447,34 +436,282 @@
             const urlParams = new URLSearchParams(window.location.search);
             const businessId = urlParams.get('business');
             
-            if (businessId) {
-                try {
-                    const response = await fetch(`/api/customer/business/${businessId}`);
-                    if (response.ok) {
-                        const business = await response.json();
-                        
-                        // Update business banner
-                        document.getElementById('businessBanner').style.display = 'block';
-                        document.getElementById('businessBannerName').textContent = business.business_name;
-                        document.getElementById('businessBannerPhone').textContent = business.phone || 'N/A';
-                        
-                        // Update address if available
-                        const addressEl = document.getElementById('businessBannerAddress');
-                        if (business.address) {
-                            addressEl.textContent = business.address;
-                        } else {
-                            addressEl.parentElement.style.display = 'none';
-                        }
-                        
-                        // Update card header title
-                        document.getElementById('authCardTitle').textContent = `Welcome to ${business.business_name}`;
-                        
-                        // Update page title
-                        document.title = `Login - ${business.business_name}`;
-                    }
-                } catch (error) {
-                    console.error('Error loading business info:', error);
+            if (!businessId) {
+                // No business ID provided, redirect to home
+                window.location.href = '/';
+                return;
+            }
+
+            try {
+                // Show loading while fetching business info
+                if (typeof loadingManager !== 'undefined') {
+                    loadingManager.show('Loading business information...');
                 }
+
+                const response = await fetch(`/api/customer/business/${businessId}`);
+                if (response.ok) {
+                    const business = await response.json();
+                    
+                    // Update business banner
+                    document.getElementById('businessBanner').style.display = 'block';
+                    document.getElementById('businessBannerName').textContent = business.business_name;
+                    document.getElementById('businessBannerPhone').textContent = business.phone || 'N/A';
+                    
+                    // Update address if available
+                    const addressEl = document.getElementById('businessBannerAddress');
+                    if (business.address) {
+                        addressEl.textContent = business.address;
+                    } else {
+                        addressEl.parentElement.style.display = 'none';
+                    }
+                    
+                    // Update card header title
+                    document.getElementById('authCardTitle').textContent = `Welcome to ${business.business_name}`;
+                    
+                    // Update page title
+                    document.title = `Login - ${business.business_name}`;
+                } else {
+                    throw new Error('Business not found');
+                }
+            } catch (error) {
+                console.error('Error loading business info:', error);
+                if (typeof loadingManager !== 'undefined') {
+                    loadingManager.showNotification('Failed to load business information. Redirecting...', 'error');
+                } else {
+                    alert('Failed to load business information. Redirecting...');
+                }
+                setTimeout(() => {
+                    window.location.href = '/';
+                }, 2000);
+            } finally {
+                // Hide loading overlay
+                if (typeof loadingManager !== 'undefined') {
+                    loadingManager.hide();
+                }
+            }
+        });
+
+        // Tab switching functionality
+        document.addEventListener('DOMContentLoaded', function() {
+            const loginTab = document.getElementById('loginTab');
+            const signupTab = document.getElementById('signupTab');
+            const loginForm = document.getElementById('loginForm');
+            const signupForm = document.getElementById('signupForm');
+            const switchToSignup = document.getElementById('switchToSignup');
+            const switchToLogin = document.getElementById('switchToLogin');
+
+            // Tab click handlers
+            if (loginTab) {
+                loginTab.addEventListener('click', function() {
+                    loginTab.classList.add('active');
+                    signupTab.classList.remove('active');
+                    loginForm.style.display = 'block';
+                    signupForm.style.display = 'none';
+                });
+            }
+
+            if (signupTab) {
+                signupTab.addEventListener('click', function() {
+                    signupTab.classList.add('active');
+                    loginTab.classList.remove('active');
+                    signupForm.style.display = 'block';
+                    loginForm.style.display = 'none';
+                });
+            }
+
+            // Link click handlers
+            if (switchToSignup) {
+                switchToSignup.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    signupTab.click();
+                });
+            }
+
+            if (switchToLogin) {
+                switchToLogin.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    loginTab.click();
+                });
+            }
+
+            // Password toggle handlers
+            const toggleButtons = [
+                { buttonId: 'toggleLoginPassword', inputId: 'loginPassword' },
+                { buttonId: 'toggleSignupPassword', inputId: 'signupPassword' },
+                { buttonId: 'toggleConfirmPassword', inputId: 'confirmPassword' }
+            ];
+
+            toggleButtons.forEach(({ buttonId, inputId }) => {
+                const button = document.getElementById(buttonId);
+                const input = document.getElementById(inputId);
+                
+                if (button && input) {
+                    button.addEventListener('click', function() {
+                        const type = input.getAttribute('type') === 'password' ? 'text' : 'password';
+                        input.setAttribute('type', type);
+                        
+                        const icon = button.querySelector('i');
+                        if (icon) {
+                            icon.classList.toggle('fa-eye');
+                            icon.classList.toggle('fa-eye-slash');
+                        }
+                    });
+                }
+            });
+
+            // Form handlers
+            const loginFormElement = document.getElementById('loginFormElement');
+            if (loginFormElement) {
+                loginFormElement.addEventListener('submit', async function(e) {
+                    e.preventDefault();
+                    
+                    const email = document.getElementById('loginEmail').value;
+                    const password = document.getElementById('loginPassword').value;
+                    const rememberMe = document.getElementById('rememberMeLogin')?.checked || false;
+
+                    // Check network before proceeding
+                    if (typeof loadingManager !== 'undefined' && !loadingManager.checkNetworkBeforeAction('login')) {
+                        return;
+                    }
+
+                    if (typeof loadingManager !== 'undefined') {
+                        loadingManager.show('Logging in...');
+                    }
+
+                    try {
+                        const response = await fetch('/api/customer/login', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ email, password })
+                        });
+
+                        const data = await response.json();
+
+                        if (data.success) {
+                            localStorage.setItem('authToken', data.token);
+                            
+                            if (rememberMe) {
+                                localStorage.setItem('rememberedCustomerEmail', email);
+                            } else {
+                                localStorage.removeItem('rememberedCustomerEmail');
+                            }
+
+                            if (typeof loadingManager !== 'undefined') {
+                                loadingManager.showNotification('Login successful! Redirecting...', 'success');
+                            }
+
+                            // Redirect to customer booking page with business ID
+                            const urlParams = new URLSearchParams(window.location.search);
+                            const businessId = urlParams.get('business');
+                            setTimeout(() => {
+                                window.location.href = `/customer?business=${businessId}`;
+                            }, 1000);
+                        } else {
+                            if (typeof loadingManager !== 'undefined') {
+                                loadingManager.showNotification(data.error || 'Login failed', 'error');
+                            } else {
+                                alert(data.error || 'Login failed');
+                            }
+                        }
+                    } catch (error) {
+                        console.error('Login error:', error);
+                        if (typeof loadingManager !== 'undefined') {
+                            loadingManager.showNotification('Login failed. Please check your connection and try again.', 'error');
+                        } else {
+                            alert('Login failed. Please try again.');
+                        }
+                    } finally {
+                        if (typeof loadingManager !== 'undefined') {
+                            loadingManager.hide();
+                        }
+                    }
+                });
+            }
+
+            const signupFormElement = document.getElementById('signupFormElement');
+            if (signupFormElement) {
+                signupFormElement.addEventListener('submit', async function(e) {
+                    e.preventDefault();
+
+                    const password = document.getElementById('signupPassword').value;
+                    const confirmPassword = document.getElementById('confirmPassword').value;
+
+                    if (password !== confirmPassword) {
+                        if (typeof loadingManager !== 'undefined') {
+                            loadingManager.showNotification('Passwords do not match', 'error');
+                        } else {
+                            alert('Passwords do not match');
+                        }
+                        return;
+                    }
+
+                    const formData = {
+                        name: `${document.getElementById('signupFirstName').value} ${document.getElementById('signupLastName').value}`,
+                        email: document.getElementById('signupEmail').value,
+                        phone: document.getElementById('signupPhone').value,
+                        password: password
+                    };
+
+                    // Check network before proceeding
+                    if (typeof loadingManager !== 'undefined' && !loadingManager.checkNetworkBeforeAction('register')) {
+                        return;
+                    }
+
+                    if (typeof loadingManager !== 'undefined') {
+                        loadingManager.show('Creating your account...');
+                    }
+
+                    try {
+                        const response = await fetch('/api/customer/register', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(formData)
+                        });
+
+                        const data = await response.json();
+
+                        if (data.success) {
+                            localStorage.setItem('authToken', data.token);
+
+                            if (typeof loadingManager !== 'undefined') {
+                                loadingManager.showNotification('Registration successful! Redirecting...', 'success');
+                            }
+
+                            // Redirect to customer booking page with business ID
+                            const urlParams = new URLSearchParams(window.location.search);
+                            const businessId = urlParams.get('business');
+                            setTimeout(() => {
+                                window.location.href = `/customer?business=${businessId}`;
+                            }, 1000);
+                        } else {
+                            if (typeof loadingManager !== 'undefined') {
+                                loadingManager.showNotification(data.error || 'Registration failed', 'error');
+                            } else {
+                                alert(data.error || 'Registration failed');
+                            }
+                        }
+                    } catch (error) {
+                        console.error('Registration error:', error);
+                        if (typeof loadingManager !== 'undefined') {
+                            loadingManager.showNotification('Registration failed. Please check your connection and try again.', 'error');
+                        } else {
+                            alert('Registration failed. Please try again.');
+                        }
+                    } finally {
+                        if (typeof loadingManager !== 'undefined') {
+                            loadingManager.hide();
+                        }
+                    }
+                });
+            }
+
+            // Pre-fill remembered email for login
+            const rememberedEmail = localStorage.getItem('rememberedCustomerEmail');
+            if (rememberedEmail) {
+                const emailInput = document.getElementById('loginEmail');
+                const rememberCheckbox = document.getElementById('rememberMeLogin');
+                if (emailInput) emailInput.value = rememberedEmail;
+                if (rememberCheckbox) rememberCheckbox.checked = true;
             }
         });
     </script>
