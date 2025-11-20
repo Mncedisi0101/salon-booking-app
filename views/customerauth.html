@@ -315,7 +315,8 @@
                                     <a href="#" class="float-end">Forgot password?</a>
                                 </div>
                                 
-                                <button type="submit" class="btn btn-primary w-100 py-2 mb-3">Sign In</button>
+                                    <input type="hidden" id="loginBusinessId" name="businessId" />
+                                    <button type="submit" class="btn btn-primary w-100 py-2 mb-3">Sign In</button>
                                 
                                 <div class="divider">
                                     <span>Or continue with</span>
@@ -387,6 +388,7 @@
                                     </label>
                                 </div>
                                 
+                                <input type="hidden" id="signupBusinessId" name="businessId" />
                                 <button type="submit" class="btn btn-primary w-100 py-2 mb-3">Create Account</button>
                                 
                                 <div class="divider">
@@ -567,6 +569,10 @@
                     
                     const email = document.getElementById('loginEmail').value;
                     const password = document.getElementById('loginPassword').value;
+                    const businessHidden = document.getElementById('loginBusinessId');
+                    const urlParams = new URLSearchParams(window.location.search);
+                    const businessId = urlParams.get('business');
+                    if (businessHidden) businessHidden.value = businessId;
                     const rememberMe = document.getElementById('rememberMeLogin')?.checked || false;
 
                     // Check network before proceeding
@@ -579,10 +585,10 @@
                     }
 
                     try {
-                        const response = await fetch('/api/customer/login', {
+                            const response = await fetch('/api/customer/login', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ email, password })
+                                body: JSON.stringify({ email, password, businessId })
                         });
 
                         const data = await response.json();
@@ -645,11 +651,16 @@
                         return;
                     }
 
+                    const urlParams = new URLSearchParams(window.location.search);
+                    const businessId = urlParams.get('business');
+                    const signupBusinessHidden = document.getElementById('signupBusinessId');
+                    if (signupBusinessHidden) signupBusinessHidden.value = businessId;
                     const formData = {
                         name: `${document.getElementById('signupFirstName').value} ${document.getElementById('signupLastName').value}`,
                         email: document.getElementById('signupEmail').value,
                         phone: document.getElementById('signupPhone').value,
-                        password: password
+                        password: password,
+                        businessId
                     };
 
                     // Check network before proceeding

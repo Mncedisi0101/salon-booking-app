@@ -758,7 +758,19 @@ app.post('/api/customer/register', async (req, res) => {
       return res.status(429).json({ error: 'Too many registration attempts. Please try again later.' });
     }
 
-    const { name, email, phone, password } = req.body;
+    const { name, email, phone, password, businessId: rawBusinessId } = req.body;
+    const businessId = sanitizeString(rawBusinessId || req.query.businessId || '');
+    if (!businessId) {
+      return res.status(400).json({ error: 'Business ID is required for registration' });
+    }
+    const { data: targetBusiness } = await supabase
+      .from('businesses')
+      .select('id')
+      .eq('id', businessId)
+      .single();
+    if (!targetBusiness) {
+      return res.status(400).json({ error: 'Invalid business ID' });
+    }
 
     // Validation
     const errors = [];
@@ -799,40 +811,43 @@ app.post('/api/customer/register', async (req, res) => {
       return res.status(400).json({ error: 'Password must be at least 8 characters' });
     }
 
-    // Check if customer already exists
     const { data: existingCustomer } = await supabase
       .from('customers')
       .select('*')
       .eq('email', sanitizedEmail)
       .single();
 
+    let customerId = uuidv4();
+    let customer;
     if (existingCustomer) {
-      return res.status(400).json({ error: 'Customer already registered with this email' });
+      customerId = existingCustomer.id;
+      customer = existingCustomer;
+      const { data: existingMapping } = await supabase
+        .from('business_customers')
+        .select('id')
+        .eq('business_id', businessId)
+        .eq('customer_id', customerId)
+        .single();
+      if (existingMapping) {
+        return res.status(400).json({ error: 'Customer already registered for this business' });
+      }
+    } else {
+      const hashedPassword = await bcrypt.hash(password, 10);
+      const { data: newCustomer, error: insertError } = await supabase
+        .from('customers')
+        .insert([{ id: customerId, name: sanitizedName, email: sanitizedEmail, phone: sanitizedPhone, password: hashedPassword }])
+        .select()
+        .single();
+      if (insertError) throw insertError;
+      customer = newCustomer;
     }
-
-    const hashedPassword = await bcrypt.hash(password, 10);
-    const customerId = uuidv4();
-
-    const { data: customer, error } = await supabase
-      .from('customers')
-      .insert([{
-        id: customerId,
-        name: sanitizedName,
-        email: sanitizedEmail,
-        phone: sanitizedPhone,
-        password: hashedPassword
-      }])
-      .select()
-      .single();
-
-    if (error) throw error;
+    const { error: mappingError } = await supabase
+      .from('business_customers')
+      .insert([{ business_id: businessId, customer_id: customerId }]);
+    if (mappingError) throw mappingError;
 
     const token = jwt.sign(
-      { 
-        id: customer.id, 
-        email: customer.email, 
-        role: 'customer' 
-      },
+      { id: customer.id, email: customer.email, role: 'customer', businessId },
       JWT_SECRET,
       { expiresIn: '24h' }
     );
@@ -845,7 +860,8 @@ app.post('/api/customer/register', async (req, res) => {
         id: customer.id,
         name: customer.name,
         email: customer.email,
-        phone: customer.phone
+        phone: customer.phone,
+        businessId
       }
     });
 
@@ -864,7 +880,19 @@ app.post('/api/customer/login', async (req, res) => {
       return res.status(429).json({ error: 'Too many login attempts. Please try again later.' });
     }
 
-    const { email, password } = req.body;
+    const { email, password, businessId: rawBusinessId } = req.body;
+    const businessId = sanitizeString(rawBusinessId || req.query.businessId || '');
+    if (!businessId) {
+      return res.status(400).json({ error: 'Business ID is required for login' });
+    }
+    const { data: targetBusiness } = await supabase
+      .from('businesses')
+      .select('id')
+      .eq('id', businessId)
+      .single();
+    if (!targetBusiness) {
+      return res.status(400).json({ error: 'Invalid business ID' });
+    }
 
     // Validation
     if (!email || !password) {
@@ -892,12 +920,27 @@ app.post('/api/customer/login', async (req, res) => {
       return res.status(400).json({ error: 'Invalid credentials' });
     }
 
+    const { data: mapping, error: mappingError } = await supabase
+      .from('business_customers')
+      .select('id')
+      .eq('business_id', businessId)
+      .eq('customer_id', customer.id)
+      .single();
+    if (mappingError || !mapping) {
+      const { data: legacyAppointments } = await supabase
+        .from('appointments')
+        .select('id')
+        .eq('business_id', businessId)
+        .eq('customer_id', customer.id)
+        .limit(1);
+      if (legacyAppointments && legacyAppointments.length > 0) {
+        await supabase.from('business_customers').insert([{ business_id: businessId, customer_id: customer.id }]);
+      } else {
+        return res.status(403).json({ error: 'This customer is not registered for this business.' });
+      }
+    }
     const token = jwt.sign(
-      { 
-        id: customer.id, 
-        email: customer.email, 
-        role: 'customer' 
-      },
+      { id: customer.id, email: customer.email, role: 'customer', businessId },
       JWT_SECRET,
       { expiresIn: '24h' }
     );
@@ -910,7 +953,8 @@ app.post('/api/customer/login', async (req, res) => {
         id: customer.id,
         name: customer.name,
         email: customer.email,
-        phone: customer.phone
+        phone: customer.phone,
+        businessId
       }
     });
 
@@ -1930,7 +1974,7 @@ app.post('/api/customer/book-appointment', async (req, res) => {
       }
     }
 
-    // Check if customer exists, if not create one
+    // Check if customer exists globally, if not create one
     let customerId = uuidv4();
     const { data: existingCustomer } = await supabase
       .from('customers')
@@ -1951,15 +1995,20 @@ app.post('/api/customer/book-appointment', async (req, res) => {
       if (customerError) throw customerError;
     } else {
       customerId = existingCustomer.id;
-      
-      // Update existing customer info
       await supabase
         .from('customers')
-        .update({
-          name: sanitizedCustomerName,
-          phone: sanitizedCustomerPhone
-        })
+        .update({ name: sanitizedCustomerName, phone: sanitizedCustomerPhone })
         .eq('id', customerId);
+    }
+    // Ensure mapping exists between business and customer for scoping
+    const { data: existingMapping } = await supabase
+      .from('business_customers')
+      .select('id')
+      .eq('business_id', businessId)
+      .eq('customer_id', customerId)
+      .single();
+    if (!existingMapping) {
+      await supabase.from('business_customers').insert([{ business_id: businessId, customer_id: customerId }]);
     }
 
     // Create appointment

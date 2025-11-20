@@ -92,3 +92,13 @@ CREATE TABLE insurance_leads (
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- Mapping table to associate customers with specific businesses
+-- Allows same customer email to book across multiple businesses while preserving per-business scoping
+CREATE TABLE business_customers (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    business_id UUID REFERENCES businesses(id) ON DELETE CASCADE,
+    customer_id UUID REFERENCES customers(id) ON DELETE CASCADE,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    UNIQUE(business_id, customer_id)
+);
