@@ -533,18 +533,26 @@ app.post('/api/business/register', async (req, res) => {
     }
     
     // Check if business already exists
-    const { data: existingBusiness } = await supabase
+    console.log('🔍 Checking if business already exists with email:', sanitizedEmail);
+    const { data: existingBusiness, error: checkError } = await supabase
       .from('businesses')
-      .select('*')
+      .select('email')
       .eq('email', sanitizedEmail)
-      .single();
+      .maybeSingle(); // Use maybeSingle() instead of single() to avoid error when no results
 
-    if (existingBusiness) {
-      return res.status(400).json({ error: 'Business already registered with this email' });
+    if (checkError) {
+      console.error('❌ Error checking existing business:', checkError);
     }
 
+    if (existingBusiness) {
+      console.log('⚠️ Business already exists with this email');
+      return res.status(400).json({ 
+        error: 'A business with this email already exists. Please use a different email or login instead.'
+      });
+    }
+
+    console.log('✅ Email is available');
     console.log('📝 Starting business creation process...');
-    console.log('Business email:', sanitizedEmail);
 
     // Hash password
     let hashedPassword;
@@ -589,16 +597,19 @@ app.post('/api/business/register', async (req, res) => {
       
       // Check for specific database errors
       let errorMessage = 'Failed to create business account';
+      let statusCode = 500;
+      
       if (error.code === '23505') {
-        errorMessage = 'A business with this email already exists';
+        // Duplicate key error - this is a client error, not server error
+        errorMessage = 'A business with this email already exists. Please use a different email or login instead.';
+        statusCode = 400;
       } else if (error.message) {
         errorMessage = error.message;
       }
       
-      return res.status(500).json({ 
+      return res.status(statusCode).json({ 
         error: errorMessage,
-        details: error.details || error.hint || error.message,
-        code: error.code
+        details: process.env.NODE_ENV !== 'production' ? (error.details || error.hint || error.message) : undefined
       });
     }
 
