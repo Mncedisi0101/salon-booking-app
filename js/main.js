@@ -164,13 +164,8 @@ class MainApp {
         }
 
         // Business Registration Form
-        const businessRegisterForm = document.getElementById('businessRegisterForm');
-        if (businessRegisterForm) {
-            businessRegisterForm.addEventListener('submit', (e) => {
-                e.preventDefault();
-                this.handleBusinessRegistration();
-            });
-        }
+        // Note: Business registration is handled by auth.js to avoid duplicate submissions
+        // The authManager handles the form submission with proper validation
 
         // Admin Login Form
         const adminLoginForm = document.getElementById('adminLoginForm');

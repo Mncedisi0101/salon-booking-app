@@ -92,10 +92,18 @@ class AuthManager {
     }
 
     async businessRegister(formData) {
+        // Prevent double submissions
+        if (this._isSubmitting) {
+            console.log('⚠️ Registration already in progress, ignoring duplicate submission');
+            return;
+        }
+
         // Check network availability
         if (typeof loadingManager !== 'undefined' && !loadingManager.checkNetworkBeforeAction('register business')) {
             return;
         }
+
+        this._isSubmitting = true;
 
         if (typeof loadingManager !== 'undefined') {
             loadingManager.show('Registering business...');
@@ -148,6 +156,7 @@ class AuthManager {
                 alert('Registration failed. Please check your connection and try again.');
             }
         } finally {
+            this._isSubmitting = false;
             if (typeof loadingManager !== 'undefined') {
                 loadingManager.hide();
             }
