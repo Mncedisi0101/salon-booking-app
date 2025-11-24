@@ -562,7 +562,15 @@ app.post('/api/business/register', async (req, res) => {
       .select()
       .single();
 
-    if (error) throw error;
+    if (error) {
+      console.error('Failed to create business:', error);
+      return res.status(500).json({ 
+        error: 'Failed to create business account',
+        details: error.message 
+      });
+    }
+
+    console.log('✅ Business created successfully:', businessId);
 
     // Create default business hours (non-critical operation)
     try {
@@ -578,10 +586,12 @@ app.post('/api/business/register', async (req, res) => {
 
       const { error: hoursError } = await supabase.from('business_hours').insert(businessHours);
       if (hoursError) {
-        console.warn('Failed to create default business hours:', hoursError);
+        console.warn('⚠️ Failed to create default business hours:', hoursError.message);
+      } else {
+        console.log('✅ Business hours created successfully');
       }
     } catch (hoursErr) {
-      console.warn('Error creating business hours:', hoursErr);
+      console.warn('⚠️ Error creating business hours:', hoursErr.message);
     }
 
     // Create insurance lead (non-critical operation)
@@ -595,12 +605,16 @@ app.post('/api/business/register', async (req, res) => {
         status: 'new'
       }]);
       if (leadError) {
-        console.warn('Failed to create insurance lead:', leadError);
+        console.warn('⚠️ Failed to create insurance lead:', leadError.message);
+      } else {
+        console.log('✅ Insurance lead created successfully');
       }
     } catch (leadErr) {
-      console.warn('Error creating insurance lead:', leadErr);
+      console.warn('⚠️ Error creating insurance lead:', leadErr.message);
     }
 
+    console.log('✅ Business registration completed successfully');
+    
     res.json({ 
       success: true, 
       message: 'Business registered successfully',
@@ -608,8 +622,15 @@ app.post('/api/business/register', async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Registration error:', error);
-    res.status(500).json({ error: 'Internal server error' });
+    console.error('❌ Registration error:', error);
+    console.error('Error stack:', error.stack);
+    
+    // Send more detailed error in development, generic in production
+    const isDevelopment = process.env.NODE_ENV !== 'production';
+    res.status(500).json({ 
+      error: isDevelopment ? error.message : 'Registration failed. Please try again.',
+      details: isDevelopment ? error.stack : undefined
+    });
   }
 });
 

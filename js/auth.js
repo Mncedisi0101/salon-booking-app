@@ -112,7 +112,7 @@ class AuthManager {
 
             const data = await response.json();
 
-            if (data.success) {
+            if (response.ok && data.success) {
                 if (typeof loadingManager !== 'undefined') {
                     loadingManager.showNotification('Business registered successfully! Please login.', 'success');
                 } else {
@@ -121,10 +121,14 @@ class AuthManager {
                 closeModal('businessRegisterModal');
                 document.getElementById('businessRegisterForm').reset();
             } else {
+                // Handle specific error messages from server
+                const errorMessage = data.error || data.details || 'Registration failed';
+                console.error('Registration failed:', errorMessage);
+                
                 if (typeof loadingManager !== 'undefined') {
-                    loadingManager.showNotification(data.error || 'Registration failed', 'error');
+                    loadingManager.showNotification(errorMessage, 'error');
                 } else {
-                    alert(data.error || 'Registration failed');
+                    alert(errorMessage);
                 }
             }
         } catch (error) {
