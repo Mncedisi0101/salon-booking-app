@@ -543,11 +543,27 @@ app.post('/api/business/register', async (req, res) => {
       return res.status(400).json({ error: 'Business already registered with this email' });
     }
 
+    console.log('📝 Starting business creation process...');
+    console.log('Business email:', sanitizedEmail);
+
     // Hash password
-    const hashedPassword = await bcrypt.hash(password, 10);
+    let hashedPassword;
+    try {
+      hashedPassword = await bcrypt.hash(password, 10);
+      console.log('✅ Password hashed successfully');
+    } catch (hashError) {
+      console.error('❌ Password hashing failed:', hashError);
+      return res.status(500).json({ 
+        error: 'Failed to process password',
+        details: hashError.message
+      });
+    }
+
     const businessId = uuidv4();
+    console.log('🆔 Generated business ID:', businessId);
 
     // Create business
+    console.log('💾 Attempting to insert business into database...');
     const { data: business, error } = await supabase
       .from('businesses')
       .insert([{
@@ -563,10 +579,26 @@ app.post('/api/business/register', async (req, res) => {
       .single();
 
     if (error) {
-      console.error('Failed to create business:', error);
+      console.error('❌ Failed to create business:', error);
+      console.error('Error details:', {
+        message: error.message,
+        code: error.code,
+        details: error.details,
+        hint: error.hint
+      });
+      
+      // Check for specific database errors
+      let errorMessage = 'Failed to create business account';
+      if (error.code === '23505') {
+        errorMessage = 'A business with this email already exists';
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
       return res.status(500).json({ 
-        error: 'Failed to create business account',
-        details: error.message 
+        error: errorMessage,
+        details: error.details || error.hint || error.message,
+        code: error.code
       });
     }
 
@@ -624,12 +656,25 @@ app.post('/api/business/register', async (req, res) => {
   } catch (error) {
     console.error('❌ Registration error:', error);
     console.error('Error stack:', error.stack);
+    console.error('Error type:', error.constructor.name);
     
     // Send more detailed error in development, generic in production
     const isDevelopment = process.env.NODE_ENV !== 'production';
+    
+    // Determine user-friendly error message
+    let userMessage = 'Registration failed. Please try again.';
+    if (error.message.includes('duplicate') || error.message.includes('unique')) {
+      userMessage = 'A business with this email already exists';
+    } else if (error.message.includes('network') || error.message.includes('timeout')) {
+      userMessage = 'Network error. Please check your connection and try again.';
+    } else if (isDevelopment) {
+      userMessage = error.message;
+    }
+    
     res.status(500).json({ 
-      error: isDevelopment ? error.message : 'Registration failed. Please try again.',
-      details: isDevelopment ? error.stack : undefined
+      error: userMessage,
+      details: isDevelopment ? error.message : undefined,
+      stack: isDevelopment ? error.stack : undefined
     });
   }
 });

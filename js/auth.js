@@ -122,8 +122,20 @@ class AuthManager {
                 document.getElementById('businessRegisterForm').reset();
             } else {
                 // Handle specific error messages from server
-                const errorMessage = data.error || data.details || 'Registration failed';
-                console.error('Registration failed:', errorMessage);
+                let errorMessage = data.error || 'Registration failed';
+                
+                // If there are additional details, log them but show user-friendly message
+                if (data.details) {
+                    console.error('Registration error details:', data.details);
+                    console.error('Error code:', data.code);
+                    
+                    // Append details to error message for better debugging
+                    if (data.code) {
+                        console.error('Database error code:', data.code);
+                    }
+                }
+                
+                console.error('Registration failed:', errorMessage, data);
                 
                 if (typeof loadingManager !== 'undefined') {
                     loadingManager.showNotification(errorMessage, 'error');
