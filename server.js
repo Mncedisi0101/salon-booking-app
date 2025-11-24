@@ -564,28 +564,42 @@ app.post('/api/business/register', async (req, res) => {
 
     if (error) throw error;
 
-    // Create default business hours
-    const businessHours = [
-      { business_id: businessId, day: 0, open_time: '09:00', close_time: '17:00', is_closed: true },
-      { business_id: businessId, day: 1, open_time: '09:00', close_time: '17:00', is_closed: false },
-      { business_id: businessId, day: 2, open_time: '09:00', close_time: '17:00', is_closed: false },
-      { business_id: businessId, day: 3, open_time: '09:00', close_time: '17:00', is_closed: false },
-      { business_id: businessId, day: 4, open_time: '09:00', close_time: '17:00', is_closed: false },
-      { business_id: businessId, day: 5, open_time: '09:00', close_time: '17:00', is_closed: false },
-      { business_id: businessId, day: 6, open_time: '10:00', close_time: '16:00', is_closed: true }
-    ];
+    // Create default business hours (non-critical operation)
+    try {
+      const businessHours = [
+        { business_id: businessId, day: 0, open_time: '09:00', close_time: '17:00', is_closed: true },
+        { business_id: businessId, day: 1, open_time: '09:00', close_time: '17:00', is_closed: false },
+        { business_id: businessId, day: 2, open_time: '09:00', close_time: '17:00', is_closed: false },
+        { business_id: businessId, day: 3, open_time: '09:00', close_time: '17:00', is_closed: false },
+        { business_id: businessId, day: 4, open_time: '09:00', close_time: '17:00', is_closed: false },
+        { business_id: businessId, day: 5, open_time: '09:00', close_time: '17:00', is_closed: false },
+        { business_id: businessId, day: 6, open_time: '10:00', close_time: '16:00', is_closed: true }
+      ];
 
-    await supabase.from('business_hours').insert(businessHours);
+      const { error: hoursError } = await supabase.from('business_hours').insert(businessHours);
+      if (hoursError) {
+        console.warn('Failed to create default business hours:', hoursError);
+      }
+    } catch (hoursErr) {
+      console.warn('Error creating business hours:', hoursErr);
+    }
 
-    // Create insurance lead
-    await supabase.from('insurance_leads').insert([{
-      business_id: businessId,
-      business_name: sanitizedBusinessName,
-      owner_name: sanitizedOwnerName,
-      contact_email: sanitizedEmail,
-      contact_phone: sanitizedPhone,
-      status: 'new'
-    }]);
+    // Create insurance lead (non-critical operation)
+    try {
+      const { error: leadError } = await supabase.from('insurance_leads').insert([{
+        business_id: businessId,
+        business_name: sanitizedBusinessName,
+        owner_name: sanitizedOwnerName,
+        contact_email: sanitizedEmail,
+        contact_phone: sanitizedPhone,
+        status: 'new'
+      }]);
+      if (leadError) {
+        console.warn('Failed to create insurance lead:', leadError);
+      }
+    } catch (leadErr) {
+      console.warn('Error creating insurance lead:', leadErr);
+    }
 
     res.json({ 
       success: true, 
